@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <link rel="stylesheet" href="katex.min.css" type="text/css" />
+    <link rel="stylesheet" href="mermaid.min.css" type="text/css" />
+    <link rel="stylesheet" href="admonition.css" type="text/css" />
+    <script type="text/javascript" src="katex.min.js"></script>
+    <script type="text/javascript" src="mermaid.min.js"></script>
+    <script>
+        mermaid.initialize({ startOnLoad: false });
+    </script>
+    <script>
+        function render(tagClass, replace, renderIt) {
+            var candidateElements = document.getElementsByClassName(tagClass);
+            var elements = [];
+            for (const i in candidateElements) {
+                if (candidateElements.hasOwnProperty(i)) elements.push(candidateElements[i]);
+            }
+
+            var no = 0;
+            elements.forEach(elem => {
+                try {
+                    no = no + 1;
+                    var textContent = replace(elem.textContent);
+                    console.log(textContent);
+                    renderIt(textContent, elem, no);
+                }
+                catch(error) {
+                    if (error instanceof ReferenceError) {
+                        // If the error is a ReferenceError, log the error message to the console
+                        console.log('ReferenceError:', error.message);
+                    } else {
+                        // If the error is not a ReferenceError, log the error message to the console
+                        console.log('Error:', error.message);
+                    }
+                }
+            });
+        };
+
+        function renderKatex() {
+            render(
+                "katex",
+                ( content ) => content.replace("&bsol;", "\\"),
+                ( content, elem ) => { katex.render(content, elem, { throwOnError: true, displayMode: elem.nodeName !== 'SPAN', }) });
+        }
+
+        function renderMermaid() {
+            render(
+                "mermaid",
+                ( content ) => content,
+                ( content, elem, no ) => {
+                    var insertIt = function (svgCode, bindFunctions) {
+                        console.log(svgCode);
+                        elem.innerHTML = svgCode;
+                    }
+                    var graph = mermaid.render(`graphDiv${no}`, content, insertIt);
+                }
+            );
+        }
+
+        function admonitionHelper () {
+            let divs = document.getElementsByClassName("adm-block");
+            for (let i = 0; i < divs.length; i++) {
+                let div = divs[i];
+                if (div.classList.contains("adm-collapsed") || div.classList.contains("adm-open")) {
+                    let headings = div.getElementsByClassName("adm-heading");
+                    if (headings.length > 0) {
+                        headings[0].addEventListener("click", event => {
+                            let el = div;
+                            event.preventDefault();
+                            event.stopImmediatePropagation();
+                            if (el.classList.contains("adm-collapsed")) {
+                                console.debug("Admonition Open", event.srcElement);
+                                el.classList.remove("adm-collapsed");
+                                el.classList.add("adm-open");
+                            } else {
+                                console.debug("Admonition Collapse", event.srcElement);
+                                el.classList.add("adm-collapsed");
+                                el.classList.remove("adm-open");
+                            }
+                        });
+                    }
+                }
+            }
+        };
+
+        // NO LONGER REQUIRED. MAKE EXPLICIT CALL IN RENDERER AFTER MD INJECTION
+        // document.addEventListener("DOMContentLoaded", renderKatex);
+    </script>
+    <style id="theme">
+    </style>
+    <title>Html Page</title>
+</head>
+<body>
+<!-- PLACEHOLDER for rendered markdown -->
+<div id="markdown">
+</div>
+</body>
+</html>

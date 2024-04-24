@@ -1,15 +1,20 @@
 package ch.tiim.markdown_widget
 
+import android.content.Context
+import android.util.Log
+import com.vladsch.flexmark.ext.admonition.AdmonitionExtension
 import com.vladsch.flexmark.ext.gfm.strikethrough.StrikethroughExtension
+import com.vladsch.flexmark.ext.gfm.strikethrough.SubscriptExtension
 import com.vladsch.flexmark.ext.gfm.tasklist.TaskListExtension
+import com.vladsch.flexmark.ext.gitlab.GitLabExtension
+import com.vladsch.flexmark.ext.superscript.SuperscriptExtension
 import com.vladsch.flexmark.ext.tables.TablesExtension
-import com.vladsch.flexmark.ext.wikilink.WikiLink
+import com.vladsch.flexmark.ext.toc.TocExtension
 import com.vladsch.flexmark.ext.wikilink.WikiLinkExtension
 import com.vladsch.flexmark.ext.yaml.front.matter.YamlFrontMatterExtension
 import com.vladsch.flexmark.html.HtmlRenderer
 import com.vladsch.flexmark.parser.Parser
 import com.vladsch.flexmark.util.ast.Node
-
 import com.vladsch.flexmark.util.data.MutableDataSet
 import com.vladsch.flexmark.util.misc.Extension
 import org.jetbrains.annotations.NotNull
@@ -26,15 +31,22 @@ class MarkdownParser(private val theme:String) {
         options.set(Parser.EXTENSIONS,
             Arrays.asList(
                 TablesExtension.create(),
-                StrikethroughExtension.create(),
+                SubscriptExtension.create(),
+                SuperscriptExtension.create(),
+                // StrikethroughExtension.create(),
+                TocExtension.create(),
+                GitLabExtension.create(),
+                AdmonitionExtension.create(),
                 TaskListExtension.create(),
                 WikiLinkExtension.create(),
                 YamlFrontMatterExtension.create(),
-                ) as @NotNull Collection<Extension>
-        );
+                ) as @NotNull Collection<Extension>)
+            .set(TablesExtension.MIN_SEPARATOR_DASHES, 1)
+            .set(TaskListExtension.ITEM_NOT_DONE_MARKER, "<input type=\"checkbox\" />")
+            .set(TaskListExtension.ITEM_DONE_MARKER, "<input type=\"checkbox\" checked=\"checked\" />")
 
         // uncomment to convert soft-breaks to hard breaks
-        options.set(HtmlRenderer.SOFT_BREAK, "<br />\n");
+        // options.set(HtmlRenderer.SOFT_BREAK, "<br />\n");
 
         parser = Parser.builder(options).build()
         renderer = HtmlRenderer.builder(options).build()
@@ -42,20 +54,10 @@ class MarkdownParser(private val theme:String) {
 
     fun parse(md: String): String {
 
-
         val document: Node = parser.parse(md)
         val html = renderer.render(document)
-        return """
-            <!DOCTYPE html>
-            <html>
-                <head>
-                    <styles>
-                        ${theme}
-                    </styles>
-                </head>
-                <body>
-                    ${html}
-                </body>
-            </html>"""
+
+        Log.d("Rendered MD: ", html)
+        return html
     }
 }
