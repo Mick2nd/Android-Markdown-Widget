@@ -1,5 +1,6 @@
 package ch.tiim.markdown_widget
 
+import android.app.Application
 import android.app.PendingIntent
 import android.app.PendingIntent.CanceledException
 import android.appwidget.AppWidgetManager
@@ -11,7 +12,9 @@ import android.content.res.Configuration.ORIENTATION_PORTRAIT
 import android.content.res.Resources
 import android.database.Cursor
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
+import android.os.FileObserver
 import android.os.Handler
 import android.os.Looper
 import android.provider.OpenableColumns
@@ -19,7 +22,11 @@ import android.util.Log
 import android.util.SparseArray
 import android.webkit.WebView
 import android.widget.RemoteViews
+import androidx.annotation.RequiresApi
+import androidx.annotation.UiThread
+import androidx.core.util.keyIterator
 import java.io.BufferedReader
+import java.io.File
 import java.io.FileNotFoundException
 import java.io.InputStream
 import java.io.InputStreamReader
@@ -33,7 +40,9 @@ private const val TAG = "MarkdownFileWidget"
  */
 class MarkdownFileWidget : AppWidgetProvider() {
     companion object {
-        private val cachedMarkdown: SparseArray<MarkdownRenderer> = SparseArray()
+        val cachedMarkdown: SparseArray<MarkdownRenderer> = SparseArray()
+        var updateViewModel: UpdateViewModel? = null
+        var stylesObserver:StylesObserver? = null
     }
 
     override fun onUpdate(
@@ -65,12 +74,21 @@ class MarkdownFileWidget : AppWidgetProvider() {
         }
     }
 
+
+    // @RequiresApi(Build.VERSION_CODES.Q)
     override fun onEnabled(context: Context) {
         // Enter relevant functionality for when the first widget is created
+
+        // val application: Application = context.applicationContext as Application
+        // updateViewModel = UpdateViewModel(application)
+        // updateViewModel!!.startService()
+        // stylesObserver = StylesObserver(context)
     }
 
     override fun onDisabled(context: Context) {
         // Enter relevant functionality for when the last widget is disabled
+        updateViewModel = null
+        stylesObserver = null
     }
 
 
@@ -79,7 +97,7 @@ class MarkdownFileWidget : AppWidgetProvider() {
         appWidgetManager: AppWidgetManager,
         appWidgetId: Int
     ) {
-        WebView.enableSlowWholeDocumentDraw()
+        // WebView.enableSlowWholeDocumentDraw()
         val size = WidgetSizeProvider(context)
         val (width, height) = size.getWidgetsSize(appWidgetId)
 
@@ -105,29 +123,38 @@ class MarkdownFileWidget : AppWidgetProvider() {
             handler.postDelayed(Runnable {
                 try {
                     pendingUpdate.send()
+                    Log.d(TAG, "Sent update request")
                 } catch (e: CanceledException) {
                     e.printStackTrace()
+                    Log.e(TAG, e.toString())
+                } catch (e: Exception) {
+                    Log.e(TAG, e.toString())
                 }
+
             }, 300)
             return
         }
 
         Log.d(TAG, "is ready! :D :D")
 
-        // Render textview to bitmap
-        val views = RemoteViews(context.packageName, R.layout.markdown_file_widget)
-        views.setImageViewBitmap(R.id.renderImg, md.getBitmap())
+        try {
+            // Render textview to bitmap
+            val views = RemoteViews(context.packageName, R.layout.markdown_file_widget)
+            views.setImageViewBitmap(R.id.renderImg, md.getBitmap())
 
-        //views.setImageViewBitmap(R.id.renderImg, bitmap)
-        if (tapBehavior != TAP_BEHAVIOUR_NONE) {
-            views.setOnClickPendingIntent(
-                R.id.renderImg,
-                getIntent(context, fileUri, tapBehavior, context.contentResolver)
-            )
+            //views.setImageViewBitmap(R.id.renderImg, bitmap)
+            if (tapBehavior != TAP_BEHAVIOUR_NONE) {
+                views.setOnClickPendingIntent(
+                    R.id.renderImg,
+                    getIntent(context, fileUri, tapBehavior, context.contentResolver)
+                )
+            }
+
+            // Instruct the widget manager to update the widget
+            appWidgetManager.updateAppWidget(appWidgetId, views)
+        } catch (err: Exception) {
+            Log.e(TAG, err.toString())
         }
-
-        // Instruct the widget manager to update the widget
-        appWidgetManager.updateAppWidget(appWidgetId, views)
     }
 }
 
@@ -150,8 +177,7 @@ fun getIntent(context: Context, uri: Uri, tapBehavior: String, c: ContentResolve
     if (tapBehavior == TAP_BEHAVIOUR_DEFAULT_APP) {
         intent.setDataAndType(uri.normalizeScheme(), "text/plain")
         //intent.addCategory(Intent.CATEGORY_OPENABLE)
-        intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
-        intent.flags = Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+        intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
     } else if (tapBehavior == TAP_BEHAVIOUR_OBSIDIAN) {
         intent.data = Uri.parse("obsidian://open?file=" + Uri.encode(getFileName(uri, c)))
     }
@@ -186,12 +212,16 @@ fun loadMarkdown(context: Context, uri: Uri): String {
         val ins: InputStream = context.contentResolver.openInputStream(uri)!!
         val reader = BufferedReader(InputStreamReader(ins, "utf-8"))
         val data = reader.lines().reduce { s, t -> s + "\n" + t }
+        reader.close()
+        ins.close()
         return data.get()
     } catch (err: FileNotFoundException) {
-        return ""
+        return err.toString()
+    } catch (err: Exception) {
+        return err.toString()
+    } finally {
     }
 }
-
 
 class WidgetSizeProvider(
     private val context: Context // Do not pass Application context

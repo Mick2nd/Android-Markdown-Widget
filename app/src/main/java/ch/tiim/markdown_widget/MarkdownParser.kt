@@ -20,6 +20,8 @@ import com.vladsch.flexmark.util.misc.Extension
 import org.jetbrains.annotations.NotNull
 import java.util.*
 
+private const val TAG = "MarkdownParser"
+
 class MarkdownParser(private val theme:String) {
 
     val parser: Parser
@@ -57,7 +59,7 @@ class MarkdownParser(private val theme:String) {
         val document: Node = parser.parse(md)
         val html = renderer.render(document)
 
-        Log.d("Rendered MD: ", html)
+        Log.d(TAG, "Rendered MD: " + html)
         return html
     }
 }

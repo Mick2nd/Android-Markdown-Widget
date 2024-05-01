@@ -4,6 +4,7 @@
     <link rel="stylesheet" href="katex.min.css" type="text/css" />
     <link rel="stylesheet" href="mermaid.min.css" type="text/css" />
     <link rel="stylesheet" href="admonition.css" type="text/css" />
+    <link rel="stylesheet" href="https://appassets.androidplatform.net/public/userstyle.css" type="text/css" />
     <script type="text/javascript" src="katex.min.js"></script>
     <script type="text/javascript" src="mermaid.min.js"></script>
     <script>
@@ -95,5 +96,21 @@
 <!-- PLACEHOLDER for rendered markdown -->
 <div id="markdown">
 </div>
+<script>
+    try {
+        var th = document.getElementById("theme");
+        th.innerHTML = jsObject.injectTheme();
+        var md = document.getElementById("markdown");
+        md.innerHTML = jsObject.injectHtml().replace("\\", "&bsol;");
+        console.log("Inserted Markdown in Javascript: " + md.innerHTML);
+
+        renderKatex();
+        renderMermaid();
+        admonitionHelper();
+    }
+    catch(e) {
+        console.log('Error:' , e.message);
+    }
+</script>
 </body>
 </html>

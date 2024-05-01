@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="ch.tiim.markdown_widget">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <application
         android:allowBackup="true"
@@ -10,6 +9,11 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.MarkdownWidget"
         android:usesCleartextTraffic="true">
+        <service
+            android:name=".UpdateService"
+            android:enabled="true"
+            android:exported="false" />
+
         <receiver
             android:name=".MarkdownFileWidget"
             android:exported="true">
@@ -20,7 +24,8 @@
             <meta-data
                 android:name="android.appwidget.provider"
                 android:resource="@xml/markdown_file_widget_info" />
-            <meta-data android:name="LauncherMetadata.Requirements.Scrollable"
+            <meta-data
+                android:name="LauncherMetadata.Requirements.Scrollable"
                 android:value="true" />
         </receiver>
 
@@ -31,6 +36,7 @@
                 <action android:name="android.appwidget.action.APPWIDGET_CONFIGURE" />
             </intent-filter>
         </activity>
+
         <activity
             android:name=".MainActivity"
             android:exported="true">
@@ -40,6 +46,6 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-
     </application>
+
 </manifest>
