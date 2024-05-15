@@ -1,12 +1,22 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <meta charset="utf-8" />
+    <!--
+        All src or href attributes are either relative to the assets folder (app supplied)
+        or to the user configured external Documents folder (true only for userstyle.css)
+        (configured here with the /documents-public folder)
+    -->
+    <link rel="icon" type="image/x-icon" href="favicon.png" />
     <link rel="stylesheet" href="katex.min.css" type="text/css" />
     <link rel="stylesheet" href="mermaid.min.css" type="text/css" />
     <link rel="stylesheet" href="admonition.css" type="text/css" />
-    <link rel="stylesheet" href="https://appassets.androidplatform.net/public/userstyle.css" type="text/css" />
+    <link rel="stylesheet" href="hl-default.min.css" type="text/css" />
+    <link rel="stylesheet" href="default.css" type="text/css" />
+    <link rel="stylesheet" href="/documents-public/userstyle.css" type="text/css" />
     <script type="text/javascript" src="katex.min.js"></script>
     <script type="text/javascript" src="mermaid.min.js"></script>
+    <script type="text/javascript" src="highlight.min.js"></script>
     <script>
         mermaid.initialize({ startOnLoad: false });
     </script>
@@ -92,7 +102,7 @@
     </style>
     <title>Html Page</title>
 </head>
-<body>
+<body class="md_body">
 <!-- PLACEHOLDER for rendered markdown -->
 <div id="markdown">
 </div>
@@ -107,6 +117,7 @@
         renderKatex();
         renderMermaid();
         admonitionHelper();
+        hljs.highlightAll();
     }
     catch(e) {
         console.log('Error:' , e.message);

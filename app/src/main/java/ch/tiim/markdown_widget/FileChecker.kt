@@ -9,10 +9,17 @@ import java.io.InputStream
 import java.io.InputStreamReader
 
 private const val TAG = "FileChecker"
+
+/**
+ * This class is meant as checker for the *userstyle.css* file changes
+ * The check has the same relevance as the check of Markdown changes
+ * Actually the location of this file is in the INTERNAL storage of this app
+ * @param uri the complete Uri of the file to be checked
+ */
 class FileChecker (val context: Context, val uri: Uri) {
 
+    var err: Exception? = null
     private var state: String = ""
-    private var err: Exception? = null
 
     init {
         updateState()
@@ -26,10 +33,6 @@ class FileChecker (val context: Context, val uri: Uri) {
         return loadFile() != state
     }
 
-    fun getException(): Exception? {
-        return err
-    }
-
     private fun loadFile(): String {
         try {
             val ins: InputStream = context.contentResolver.openInputStream(uri)!!
@@ -40,9 +43,11 @@ class FileChecker (val context: Context, val uri: Uri) {
             err = null
             return data.get()
         } catch (err: FileNotFoundException) {
+            this.err = err
             Log.w(TAG, err.toString())
             return ""
         } catch (err: Exception) {
+            this.err = err
             Log.w(TAG, err.toString())
             return ""
         } finally {

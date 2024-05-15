@@ -1,25 +1,24 @@
 package ch.tiim.markdown_widget
 
-import android.app.PendingIntent
-import android.appwidget.AppWidgetManager
-import android.content.Context
 import android.content.Intent
+import android.content.res.Configuration
 import android.net.Uri
-import android.os.Build
 import android.os.Bundle
-import android.os.FileObserver
+import android.os.Environment
+import android.os.PersistableBundle
 import android.util.Log
 import android.view.View
 import android.widget.Button
-import android.widget.ImageView
 import android.widget.LinearLayout
-import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AppCompatActivity
-import java.io.File
-import java.lang.reflect.Type
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.MainScope
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 
 private const val DEBUG = true
 private const val TAG = "MainActivity"
+
 class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -31,6 +30,13 @@ class MainActivity : AppCompatActivity() {
             startActivity(browserIntent)
         })
 
+        // THIS PIECE OF CODE WORKS, INCLUDING THE INVOCATION OF THE CALLBACK
+        ExternalStoragePathHandlerAlt.instance.inject(applicationContext, Environment.DIRECTORY_DOCUMENTS)
+        ExternalStoragePathHandlerAlt.instance.requestAccess(this) { displayOnDebug() }
+        // displayOnDebug()
+    }
+
+    private fun displayOnDebug() {
         if (DEBUG) {
             val testTxt = """
                 [TOC]
@@ -41,12 +47,21 @@ class MainActivity : AppCompatActivity() {
                 |1|2|
                 |-|-|
                 |1|2|
-                [sample]
+                [Sample]
                 
                 ## Code Block...
                 
-                ```
-                    let a = a + 1
+                > ### This Quote may be a longer paragraph
+                > How can this be styled? We use a css style here
+                > See the *default.css*
+                > > #### A nested Quote
+                > > Working?
+                
+                ```xml
+                    <root>
+                        <item name="Jürgen">Sample Text</item
+                        <item name="Regina">Sample Text</item
+                    </root>
                 ```
 
                 ```mermaid
@@ -83,17 +98,15 @@ class MainActivity : AppCompatActivity() {
             """.trimIndent()
 
             Log.d("Test:", testTxt)
-
             val debugLayout = findViewById<LinearLayout>(R.id.debugLayout)
-
-            debugLayout.addView(MarkdownRenderer(applicationContext, debugLayout.measuredWidth, debugLayout.measuredHeight, testTxt).webView)
-
-            //val img = ImageView(applicationContext)
-            //debugLayout.addView(img)
-
-            //MarkdownRenderer(applicationContext, 800, 500, testTxt) { bitmap ->
-            //    img.setImageBitmap(bitmap)
-            //}
+            debugLayout.addView(
+                MarkdownRenderer(
+                    applicationContext,
+                    debugLayout.measuredWidth,
+                    debugLayout.measuredHeight,
+                    testTxt
+                ).webView
+            )
         }
     }
 }

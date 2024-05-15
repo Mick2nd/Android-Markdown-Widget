@@ -43,7 +43,15 @@ class MarkdownParser(private val theme:String) {
                 WikiLinkExtension.create(),
                 YamlFrontMatterExtension.create(),
                 ) as @NotNull Collection<Extension>)
+
+            .set(Parser.BLOCK_QUOTE_PARSER, true)
+            .set(TablesExtension.CLASS_NAME, "md_table")
             .set(TablesExtension.MIN_SEPARATOR_DASHES, 1)
+            .set(TocExtension.DIV_CLASS, "md_toc_div")
+            .set(TocExtension.LIST_CLASS, "md_toc_list")
+            .set(TaskListExtension.TIGHT_ITEM_CLASS, "md_task_item")
+            .set(TaskListExtension.ITEM_NOT_DONE_CLASS, "md_item_not_done")
+            .set(TaskListExtension.ITEM_DONE_CLASS, "md_item_done")
             .set(TaskListExtension.ITEM_NOT_DONE_MARKER, "<input type=\"checkbox\" />")
             .set(TaskListExtension.ITEM_DONE_MARKER, "<input type=\"checkbox\" checked=\"checked\" />")
 

@@ -3,17 +3,21 @@ package ch.tiim.markdown_widget
 import android.Manifest
 import android.app.Activity
 import android.appwidget.AppWidgetManager
+import android.content.BroadcastReceiver
 import android.content.ContentResolver
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.view.View
 import android.webkit.MimeTypeMap
 import android.widget.EditText
 import android.widget.RadioGroup
 import android.widget.RemoteViews
+import androidx.annotation.RequiresApi
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import ch.tiim.markdown_widget.databinding.MarkdownFileWidgetConfigureBinding
@@ -66,6 +70,7 @@ class MarkdownFileWidgetConfigureActivity : Activity() {
         }
     }
 
+    @RequiresApi(Build.VERSION_CODES.O)
     private val onAddWidget = View.OnClickListener {
         val context = this@MarkdownFileWidgetConfigureActivity
 
@@ -98,6 +103,10 @@ class MarkdownFileWidgetConfigureActivity : Activity() {
         val resultValue = Intent()
         resultValue.putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId)
         setResult(RESULT_OK, resultValue)
+
+        val updateViewModel = UpdateViewModel(application)
+        updateViewModel.startService()
+
         finish()
     }
     private lateinit var binding: MarkdownFileWidgetConfigureBinding
@@ -114,7 +123,9 @@ class MarkdownFileWidgetConfigureActivity : Activity() {
 
         inputFilePath = binding.inputFile
         radioGroup = binding.radiogroup
-        binding.addButton.setOnClickListener(onAddWidget)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            binding.addButton.setOnClickListener(onAddWidget)
+        }
         binding.btnBrowse.setOnClickListener(onBrowse)
         binding.radioDefaultApp.isSelected = true
 
@@ -133,9 +144,7 @@ class MarkdownFileWidgetConfigureActivity : Activity() {
             finish()
             return
         }
-
     }
-
 }
 
 private const val PREFS_NAME = "ch.tiim.markdown_widget.MarkdownFileWidget"
