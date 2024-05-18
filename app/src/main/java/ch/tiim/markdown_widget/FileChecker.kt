@@ -7,6 +7,7 @@ import java.io.BufferedReader
 import java.io.FileNotFoundException
 import java.io.InputStream
 import java.io.InputStreamReader
+import javax.inject.Inject
 
 private const val TAG = "FileChecker"
 
@@ -16,7 +17,7 @@ private const val TAG = "FileChecker"
  * Actually the location of this file is in the INTERNAL storage of this app
  * @param uri the complete Uri of the file to be checked
  */
-class FileChecker (val context: Context, val uri: Uri) {
+class FileChecker @Inject constructor (val context: Context, val uri: Uri) {
 
     var err: Exception? = null
     private var state: String = ""

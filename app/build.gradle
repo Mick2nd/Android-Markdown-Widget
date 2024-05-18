@@ -1,6 +1,9 @@
+import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
+
 plugins {
     id 'com.android.application'
     id 'org.jetbrains.kotlin.android'
+    id 'org.jetbrains.kotlin.kapt'
 }
 
 android {
@@ -24,12 +27,16 @@ android {
         }
     }
     compileOptions {
-        sourceCompatibility JavaVersion.VERSION_1_8
-        targetCompatibility JavaVersion.VERSION_1_8
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
     }
     kotlinOptions {
-        jvmTarget = '1.8'
+        jvmTarget = '17'
     }
+    kotlin {
+        jvmToolchain(17)
+    }
+
     buildFeatures {
         viewBinding true
     }
@@ -39,11 +46,13 @@ android {
     namespace 'ch.tiim.markdown_widget'
 }
 
-android.applicationVariants.all { variant ->
-    variant.outputs.all {
+android.applicationVariants.configureEach { variant ->
+    variant.outputs.configureEach {
         outputFileName = "markdown-widget-${variant.name}-${variant.versionName}.apk"
     }
 }
+
+apply plugin: 'kotlin-kapt'
 
 dependencies {
 
@@ -54,8 +63,14 @@ dependencies {
 
     implementation 'com.vladsch.flexmark:flexmark-all:0.64.8'
     implementation 'androidx.webkit:webkit:1.10.0'
-    implementation 'androidx.activity:activity:1.9.0'
+    implementation 'androidx.activity:activity-ktx:1.9.0'
 
+    // implementation 'com.google.dagger:dagger:2.51.1'
+    // kapt 'com.google.dagger:dagger-compiler:2.51.1'
+    implementation 'com.google.dagger:dagger-android:2.51.1'
+    implementation 'com.google.dagger:dagger-android-support:2.51.1' // if you use the support libraries
+    kapt 'com.google.dagger:dagger-android-processor:2.51.1'
+    kapt 'com.google.dagger:dagger-compiler:2.51.1'
 
     testImplementation 'junit:junit:4.13.2'
     androidTestImplementation 'androidx.test.ext:junit:1.1.5'

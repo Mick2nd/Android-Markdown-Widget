@@ -11,6 +11,10 @@ import android.view.View
 import android.widget.Button
 import android.widget.LinearLayout
 import androidx.appcompat.app.AppCompatActivity
+import ch.tiim.markdown_widget.di.AppComponent
+import ch.tiim.markdown_widget.di.ContextModule
+import ch.tiim.markdown_widget.di.DaggerAppComponent
+import ch.tiim.markdown_widget.di.StringModule
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.launch
@@ -21,6 +25,8 @@ private const val TAG = "MainActivity"
 
 class MainActivity : AppCompatActivity() {
 
+    private lateinit var appComponent: AppComponent
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
@@ -29,11 +35,14 @@ class MainActivity : AppCompatActivity() {
             val browserIntent = Intent(Intent.ACTION_VIEW, Uri.parse("https://www.buymeacoffee.com/Tiim"))
             startActivity(browserIntent)
         })
+    }
 
+    override fun onStart() {
+        super.onStart()
         // THIS PIECE OF CODE WORKS, INCLUDING THE INVOCATION OF THE CALLBACK
-        ExternalStoragePathHandlerAlt.instance.inject(applicationContext, Environment.DIRECTORY_DOCUMENTS)
-        ExternalStoragePathHandlerAlt.instance.requestAccess(this) { displayOnDebug() }
-        // displayOnDebug()
+        AppComponent.instance.externalStoragePathHandler().apply {
+            requestAccess(this@MainActivity) { displayOnDebug() }
+        }
     }
 
     private fun displayOnDebug() {

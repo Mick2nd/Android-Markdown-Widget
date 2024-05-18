@@ -26,6 +26,8 @@ import kotlin.math.max
 import androidx.webkit.WebViewAssetLoader
 import androidx.webkit.WebViewAssetLoader.AssetsPathHandler
 import androidx.webkit.WebViewAssetLoader.InternalStoragePathHandler
+import ch.tiim.markdown_widget.di.AppComponent
+import ch.tiim.markdown_widget.di.DaggerAppComponent
 import java.io.File
 
 private const val TAG = "MarkdownRenderer"
@@ -63,7 +65,7 @@ class MarkdownRenderer(
 
         /**
          * The Asset Loader implements an interception mechanism for web site content
-         * - with a **assets** sub folder one can load all files in the app assets folder
+         * - with an **assets** sub folder one can load all files in the app assets folder
          * - with **public** one can load files from the internal app folder under files/public
          * - with **documents** one can load files from app specific external folder
          * - with **documents-public** one can load files from the GLOBAL external documents folder.
@@ -78,7 +80,7 @@ class MarkdownRenderer(
             .addPathHandler("/documents/", ExternalStoragePathHandler(context, Environment.DIRECTORY_DOCUMENTS))
 
             // THIS HANDLER NEEDS EXTRA INJECTION OUTSIDE THIS CODE
-            .addPathHandler("/documents-public/", ExternalStoragePathHandlerAlt.instance)
+            .addPathHandler("/documents-public/", AppComponent.instance.externalStoragePathHandler() as WebViewAssetLoader.PathHandler)
             .build()
 
         webView!!.let {

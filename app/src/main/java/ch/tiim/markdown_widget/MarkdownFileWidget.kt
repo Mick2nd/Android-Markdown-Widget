@@ -11,12 +11,14 @@ import android.content.res.Resources
 import android.database.Cursor
 import android.net.Uri
 import android.os.Bundle
+import android.os.Environment
 import android.os.Handler
 import android.os.Looper
 import android.provider.OpenableColumns
 import android.util.Log
 import android.util.SparseArray
 import android.widget.RemoteViews
+import ch.tiim.markdown_widget.di.AppComponent
 import java.io.BufferedReader
 import java.io.FileNotFoundException
 import java.io.InputStream

@@ -10,6 +10,7 @@ import android.os.Bundle
 import android.os.Environment
 import android.os.Handler
 import android.os.Looper
+import android.provider.ContactsContract
 import android.provider.DocumentsContract
 import android.provider.DocumentsProvider
 import android.provider.OpenableColumns
@@ -21,6 +22,8 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.provider.DocumentsContractCompat
 import androidx.documentfile.provider.DocumentFile
 import androidx.webkit.WebViewAssetLoader
+import dagger.Module
+import dagger.Provides
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -28,11 +31,15 @@ import kotlinx.coroutines.launch
 import java.io.File
 import java.io.FileNotFoundException
 import java.io.InputStream
+import javax.inject.Inject
+import javax.inject.Singleton
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 import kotlin.coroutines.suspendCoroutine
 
 private const val TAG = "ExternalStoragePathHandler"
+private const val ENCODED_FOLDER_URI = "encodedFolderUri"
+private const val PREFS_NAME = "ch.tiim.markdown_widget.MarkdownFileWidget"
 
 /**
  * TRIAL to use external (shared) storage for the userstyle.css file
@@ -68,47 +75,31 @@ class ExternalStoragePathHandler(
  * Goal of this class is to support access of WebView to files in SHARED EXTERNAL STORAGE
  * Implemented as SINGLETON
  */
-class ExternalStoragePathHandlerAlt private constructor() : WebViewAssetLoader.PathHandler {
+@Singleton
+class ExternalStoragePathHandlerAltImpl @Inject constructor() : WebViewAssetLoader.PathHandler, ExternalStoragePathHandlerAlt {
 
-    /**
-     * We have a lazily created singleton instance here
-     */
-    companion object {
-        val instance: ExternalStoragePathHandlerAlt by lazy {
-            ExternalStoragePathHandlerAlt()
-        }
-    }
-
-    private val PREFS_NAME = "ch.tiim.markdown_widget.MarkdownFileWidget"
-    lateinit var context: Context
-    lateinit var type: String
+    @Inject lateinit var context: Context
+    @Inject lateinit var type: String
     private var folderUri: Uri? = null
     private var isReady: Boolean = false
-    private var isInjected = false
+    private var isInjected = true
 
     /**
      * Inject dependencies per method injection
+     * THIS METHOD *inject* IS NO LONGER RESPONSIBLE FOR INJECTION -> DAGGER
      * @param context the context
      * @param type the type of folder we want access to
-     * @param activity sometimes it is necessary to have a reference to the client activity
-     * @param display displays the Debug content. optional.
      */
-    fun inject(
-        context: Context,
-        type: String
-    ) {
-        this.context = context
-        this.type = type
-        this.isInjected = true
-    }
 
     /**
      * THIS SECTION IS A TRIAL TO GAIN ACCESS TO A USER SELECTED FOLDER
      * PREFERRED the Public Documents Folder
      * On completion an internal callback is invoked updating the state of this instance
+     * @param activity sometimes it is necessary to have a reference to the client activity
+     * @param display displays the Debug content. optional.
      * @return returns the Uri of the selected folder or null, not used at the moment
      */
-    fun requestAccess(activity: AppCompatActivity, display: () -> Unit = { }) : Unit {
+    override fun requestAccess(activity: AppCompatActivity, display: () -> Unit) : Unit {
         assert(isInjected)
         if (restoreState()) {
             display()
@@ -176,9 +167,9 @@ class ExternalStoragePathHandlerAlt private constructor() : WebViewAssetLoader.P
         }
     }
 
-    private fun restoreState() : Boolean {
+    override fun restoreState() : Boolean {
         with (context.getSharedPreferences(PREFS_NAME, 0)) {
-            val encodedUri = getString("encodedFolderUri", null)
+            val encodedUri = getString(ENCODED_FOLDER_URI, null)
             encodedUri?.let {
                 folderUri = Uri.parse(Uri.decode(encodedUri))
                 Log.i(TAG, "Decoded Folder Uri from app state")
@@ -191,7 +182,7 @@ class ExternalStoragePathHandlerAlt private constructor() : WebViewAssetLoader.P
     private fun saveState() {
         with (context.getSharedPreferences(PREFS_NAME, 0)) {
             edit()
-                .putString("encodedFolderUri", Uri.encode(folderUri.toString()))
+                .putString(ENCODED_FOLDER_URI, Uri.encode(folderUri.toString()))
                 .apply()
             Log.i(TAG, "Stored encoded Folder Uri from app state")
         }
@@ -241,16 +232,24 @@ class ExternalStoragePathHandlerAlt private constructor() : WebViewAssetLoader.P
         val cursor = context.contentResolver.query(
             treeUri,
             arrayOf(OpenableColumns.DISPLAY_NAME, DocumentsContract.Document.COLUMN_DOCUMENT_ID),
-            null, null, null)
-        if (cursor != null) {
-            fun Cursor.next() : Cursor? = if (moveToNext()) this else null
-            fun Cursor.hasDisplayName() : Boolean = getString(0) == path
-            val entries = generateSequence { cursor.next() }
-            val documentId = entries.find { it.hasDisplayName() } ?.getString(1)
+            "${OpenableColumns.DISPLAY_NAME} = ?",
+            arrayOf(path),
+            null)
+        if (cursor != null && cursor.moveToNext()) {
+            val documentId = cursor.getString(1)
             cursor.close()
-            documentId?.also { return it }
+            return documentId
         }
 
+        cursor?.close()
         throw FileNotFoundException("Document $path not found")
     }
+}
+
+/**
+ * This interface is used by DI framework Dagger
+ */
+interface ExternalStoragePathHandlerAlt {
+    fun requestAccess(activity: AppCompatActivity, display: () -> Unit = { }) : Unit
+    fun restoreState() : Boolean
 }
