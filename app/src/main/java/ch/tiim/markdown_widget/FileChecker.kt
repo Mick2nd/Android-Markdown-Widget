@@ -8,6 +8,8 @@ import java.io.FileNotFoundException
 import java.io.InputStream
 import java.io.InputStreamReader
 import javax.inject.Inject
+import javax.inject.Named
+import javax.inject.Singleton
 
 private const val TAG = "FileChecker"
 
@@ -17,12 +19,14 @@ private const val TAG = "FileChecker"
  * Actually the location of this file is in the INTERNAL storage of this app
  * @param uri the complete Uri of the file to be checked
  */
-class FileChecker @Inject constructor (val context: Context, val uri: Uri) {
+@Singleton
+class FileChecker @Inject constructor (val context: Context, private val prefs: Preferences) {
 
-    var err: Exception? = null
+    private var err: Exception? = null
     private var state: String = ""
 
     init {
+        Log.d(TAG, "File Checker $this instantiated")
         updateState()
     }
 
@@ -36,7 +40,7 @@ class FileChecker @Inject constructor (val context: Context, val uri: Uri) {
 
     private fun loadFile(): String {
         try {
-            val ins: InputStream = context.contentResolver.openInputStream(uri)!!
+            val ins: InputStream = context.contentResolver.openInputStream(prefs["userstyle.css"])!!
             val reader = BufferedReader(InputStreamReader(ins, "utf-8"))
             val data = reader.lines().reduce { s, t -> s + "\n" + t }
             reader.close()

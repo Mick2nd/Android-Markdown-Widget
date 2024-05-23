@@ -1,33 +1,19 @@
 package ch.tiim.markdown_widget
 
-import android.app.PendingIntent
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Canvas
-import android.graphics.Color
-import android.graphics.Paint
-import android.net.Uri
 import android.os.Build
 import android.os.Environment
-import android.os.Handler
-import android.os.Looper
-import android.util.Base64
 import android.util.Log
 import android.webkit.JavascriptInterface
-import android.webkit.RenderProcessGoneDetail
-import android.webkit.WebResourceRequest
 import android.webkit.WebSettings.LOAD_NO_CACHE
 import android.webkit.WebView
 import android.webkit.WebView.RENDERER_PRIORITY_BOUND
-import android.webkit.WebViewClient
-import androidx.webkit.ServiceWorkerWebSettingsCompat.CacheMode
-import androidx.webkit.WebResourceErrorCompat
-import kotlin.math.max
 import androidx.webkit.WebViewAssetLoader
 import androidx.webkit.WebViewAssetLoader.AssetsPathHandler
 import androidx.webkit.WebViewAssetLoader.InternalStoragePathHandler
 import ch.tiim.markdown_widget.di.AppComponent
-import ch.tiim.markdown_widget.di.DaggerAppComponent
 import java.io.File
 
 private const val TAG = "MarkdownRenderer"
@@ -40,10 +26,7 @@ class MarkdownRenderer(
 ) {
     var webView: WebView? = null
 
-    private val file: File = File(context.filesDir, "public/userstyle.css")
-    private val uri: Uri = Uri.fromFile(file)
-    private val fileChecker: FileChecker = FileChecker(context, uri)
-
+    private val fileChecker = AppComponent.instance.fileChecker()
     private val theme = ""
     private var ready = false
     private var time: Long = 0
@@ -85,13 +68,11 @@ class MarkdownRenderer(
 
         webView!!.let {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                // THIS CODE IS CRUCIAL FOR PROPER UPDATE OF APP WIDGETS
                 it.setRendererPriorityPolicy(RENDERER_PRIORITY_BOUND, true)
             }
 
             it.webViewClient = object : LocalContentWebViewClient(assetLoader) {
-                init {
-                    Log.d(TAG, "INIT of webViewClient")
-                }
 
                 override fun onPageFinished(view: WebView?, url: String?) {
                     super.onPageFinished(view, url)

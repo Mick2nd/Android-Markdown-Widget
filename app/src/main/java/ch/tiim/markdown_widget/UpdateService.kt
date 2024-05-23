@@ -8,51 +8,50 @@ import android.app.PendingIntent
 import android.app.Service
 import android.content.Context
 import android.content.Intent
-import android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
-import android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE
 import android.graphics.Color
+import android.net.Uri
 import android.os.Build
-import android.os.Bundle
 import android.os.FileObserver
 import android.os.IBinder
 import android.os.PowerManager
-import android.telephony.ServiceState
 import android.util.Log
-import android.view.LayoutInflater
-import android.view.View
-import android.view.ViewGroup
 import android.widget.Toast
-import androidx.annotation.RequiresApi
-import androidx.core.app.ServiceCompat.startForeground
+import androidx.core.net.toFile
 import androidx.core.util.keyIterator
-import androidx.fragment.app.Fragment
 import androidx.lifecycle.AndroidViewModel
-import java.io.File
+import ch.tiim.markdown_widget.di.AppComponent
 
 private const val TAG = "UpdateService"
+private const val NOTIFICATION = 1
 
 /**
- * The intent is to have a service, e.g. a long living piece of code
- * This piece of code hosts an Observer for styles file changes
- * Each change triggers a Markdown File Widget update
+ * The intent is to have a service, e.g. a long living piece of code.
+ * This piece of code hosts an Observer for styles file changes.
+ * Each change triggers a Markdown File Widget update.
+ * TODO:
+ * - support versions before Q
+ * - make observed file(s) path configurable
  */
 class UpdateService : Service() {
 
-    private val NOTIFICATION = 1
     private var wakeLock: PowerManager.WakeLock? = null
     private var isServiceStarted = false
-    private var stylesObserver: StylesObserver? = null
+    private var stylesObserver: FileObserver? = null
 
-    @RequiresApi(Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
+    /**
+     * Creates the service
+     */
     override fun onCreate() {
         super.onCreate()
         Log.d(TAG, "The service has been created".uppercase())
         val notification = createNotification()
-        startForeground(NOTIFICATION, notification)                 //, FOREGROUND_SERVICE_TYPE_DATA_SYNC)
-        stylesObserver = StylesObserver(applicationContext)
+        startForeground(NOTIFICATION, notification)
+        stylesObserver = createStylesObserver(applicationContext)
     }
 
-    @RequiresApi(Build.VERSION_CODES.Q)
+    /**
+     * Starts / Stops the service
+     */
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         Log.d(TAG,"onStartCommand executed with startId: $startId")
         if (intent != null) {
@@ -61,16 +60,19 @@ class UpdateService : Service() {
             when (action) {
                 "START" -> startService()
                 "STOP"  -> stopService()
-                else -> Log.d(TAG,"This should never happen. No action in the received intent")
+                else -> Log.w(TAG,"This should never happen. No known action in the received intent")
             }
         } else {
-            Log.d(TAG, "With a null intent. It has been probably restarted by the system.")
+            Log.w(TAG, "With a null intent. It has been probably restarted by the system.")
         }
 
         // If we get killed, after returning from here, restart
         return START_STICKY
     }
 
+    /**
+     * Handles the onDestroy event
+     */
     override fun onDestroy() {
         stylesObserver = null
         Log.d(TAG, "The service has been destroyed".uppercase())
@@ -78,24 +80,29 @@ class UpdateService : Service() {
         super.onDestroy()
     }
 
+    /**
+     * Handles the onBind event
+     */
     override fun onBind(intent: Intent): IBinder? {
         Log.w(TAG, "onBind not implemented yet")
         return null
     }
 
     /**
-     * Performs the START command
+     * Performs the START command. Besides notifying the user does nothing.
      */
-    @RequiresApi(Build.VERSION_CODES.Q)
     private fun startService() {
         if (isServiceStarted)
             return
 
         isServiceStarted = true
-        Toast.makeText(this, "Service starting its task - 1", Toast.LENGTH_SHORT).show()
+        Toast.makeText(this, "Starting the foreground service", Toast.LENGTH_SHORT).show()
         Log.d(TAG, "Starting the foreground service task")
     }
 
+    /**
+     * Performs the STOP command
+     */
     private fun stopService() {
         Log.d(TAG, "Stopping the foreground service")
         Toast.makeText(this, "Service stopping", Toast.LENGTH_SHORT).show()
@@ -108,11 +115,14 @@ class UpdateService : Service() {
             stopForeground(true)
             stopSelf()
         } catch (e: Exception) {
-            Log.d(TAG, "Service stopped without being started: ${e.message}")
+            Log.w(TAG, "Service stopped without being started: ${e.message}")
         }
         isServiceStarted = false
     }
 
+    /**
+     * Code from Web. Creates a notification channel for the foreground service.
+     */
     private fun createNotification() : Notification {
         val notificationChannelId = "ENDLESS SERVICE CHANNEL"
 
@@ -158,70 +168,66 @@ class UpdateService : Service() {
 }
 
 /**
- * Does the real work: watching for for file changes and performing widget updates
+ * Does the real work: watching for file changes of the userstyle.css file and performing widget updates.
  */
-@RequiresApi(Build.VERSION_CODES.Q)
-class StylesObserver(val context: Context) :
-    FileObserver(File(context.filesDir, "public/userstyle.css"), FileObserver.MODIFY or FileObserver.CREATE) {
-
-    init {
-        startWatching()
-        Log.d(TAG, "StylesObserver started")
+fun createStylesObserver(context: Context) : FileObserver {
+    fun getUserStyle(): Uri {
+        return AppComponent.instance.preferences()["userstyle.css"]
     }
 
-    override fun onEvent(event: Int, path: String?) {
-        Log.d(TAG, "UserStyle.css updated")
-        sendUpdateRequest(context)
-    }
-
-    private fun sendUpdateRequest(context: Context) {
+    fun sendUpdateRequest(context: Context) {
+        Log.i(TAG, "UserStyle.css updated")
         for (appWidgetId in MarkdownFileWidget.cachedMarkdown.keyIterator()) {
             val pendingIntent = getUpdatePendingIntent(context, appWidgetId)
             pendingIntent.send()
         }
     }
+
+    val o =
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q)
+            object : FileObserver(getUserStyle().toFile(), MODIFY or CREATE) {
+                override fun onEvent(event: Int, path: String?) {
+                    sendUpdateRequest(context)
+                }
+            } else object : FileObserver(getUserStyle().toString(), MODIFY or CREATE) {
+                override fun onEvent(event: Int, path: String?) {
+                    sendUpdateRequest(context)
+                }
+            }
+    return o
 }
 
+/**
+ * A class to start and stop the service [UpdateService]
+ */
 class UpdateViewModel (
     application: Application
 ) : AndroidViewModel(application) {
 
-    @RequiresApi(Build.VERSION_CODES.O)
+    /**
+     * Start the service
+     */
     fun startService(){
-        Log.d(TAG, "About to start Update Service")
-        val context:Application = getApplication()
-        val intent = Intent(context, UpdateService::class.java)
-        intent.action = "START"
-        context.startForegroundService(intent)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            Log.d(TAG, "About to start Update Service")
+            val context: Application = getApplication()
+            val intent = Intent(context, UpdateService::class.java)
+            intent.action = "START"
+            context.startForegroundService(intent)
+        }
     }
 
+    /**
+     * Handles [onCleared] to stop the service
+     */
     override fun onCleared() {
-        val context:Application = getApplication()
-        val intent = Intent(context, UpdateService::class.java)
-        intent.action = "STOP"
-        context.stopService(intent)
-        Log.d(TAG,"Cleared")
-        super.onCleared()
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            val context: Application = getApplication()
+            val intent = Intent(context, UpdateService::class.java)
+            intent.action = "STOP"
+            context.stopService(intent)
+            Log.d(TAG, "Cleared")
+            super.onCleared()
+        }
     }
 }
-
-/*
-class HomeFragment : Fragment() {
-    private val updateViewModel: UpdateViewModel by activityViewModels()
-
-    override fun onCreateView(
-        inflater: LayoutInflater,
-        container: ViewGroup?,
-        savedInstanceState: Bundle?
-    ): View? {
-        updateViewModel.startService()
-        // rest of the code not shown here
-        return null
-    }
-
-    override fun onResume() {
-        super.onResume()
-        updateViewModel.startService()
-    }
-}
-*/

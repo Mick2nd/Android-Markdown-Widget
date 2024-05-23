@@ -40,8 +40,10 @@ class MainActivity : AppCompatActivity() {
     override fun onStart() {
         super.onStart()
         // THIS PIECE OF CODE WORKS, INCLUDING THE INVOCATION OF THE CALLBACK
-        AppComponent.instance.externalStoragePathHandler().apply {
-            requestAccess(this@MainActivity) { displayOnDebug() }
+        with(AppComponent.instance) {
+            storagePermissionChecker().requestAccess(this@MainActivity) {
+                displayOnDebug()
+            }
         }
     }
 

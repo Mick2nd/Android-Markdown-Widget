@@ -11,7 +11,6 @@ import android.content.res.Resources
 import android.database.Cursor
 import android.net.Uri
 import android.os.Bundle
-import android.os.Environment
 import android.os.Handler
 import android.os.Looper
 import android.provider.OpenableColumns
@@ -35,6 +34,8 @@ class MarkdownFileWidget : AppWidgetProvider() {
     companion object {
         val cachedMarkdown: SparseArray<MarkdownRenderer> = SparseArray()
     }
+
+    private val prefs = AppComponent.instance.preferences()
 
     /**
      * Updates all requested Widgets
@@ -90,7 +91,7 @@ class MarkdownFileWidget : AppWidgetProvider() {
     override fun onDeleted(context: Context, appWidgetIds: IntArray) {
         Log.i(TAG, "onDeleted")
         for (appWidgetId in appWidgetIds) {
-            deletePrefs(context, appWidgetId)
+            prefs.delete(appWidgetId)
             cachedMarkdown.delete(appWidgetId)
         }
     }
@@ -125,21 +126,6 @@ class MarkdownFileWidget : AppWidgetProvider() {
         appWidgetManager: AppWidgetManager,
         appWidgetId: Int
     ) {
-        /*
-        val pendingUpdate = getUpdatePendingIntent(context, appWidgetId)
-        val handler = Handler(Looper.getMainLooper())
-        handler.post {
-            try {
-                pendingUpdate.send()
-                Log.d(TAG, "Sent update request")
-            } catch (e: CanceledException) {
-                e.printStackTrace()
-                Log.e(TAG, e.toString())
-            } catch (e: Exception) {
-                Log.e(TAG, e.toString())
-            }
-        }
-        */
 
         loadRenderer(context, appWidgetId, true) {
             Log.d(TAG, "is ready!")
@@ -151,8 +137,8 @@ class MarkdownFileWidget : AppWidgetProvider() {
             val size = WidgetSizeProvider(context)
             val (width, height) = size.getWidgetsSize(appWidgetId)
             val views = RemoteViews(context.packageName, R.layout.markdown_file_widget)
-            val fileUri = Uri.parse(loadPref(context, appWidgetId, PREF_FILE, ""))
-            val tapBehavior = loadPref(context, appWidgetId, PREF_BEHAVIOUR, TAP_BEHAVIOUR_DEFAULT_APP)
+            val fileUri = Uri.parse(prefs[appWidgetId, PREF_FILE, ""])
+            val tapBehavior = prefs[appWidgetId, PREF_BEHAVIOUR, TAP_BEHAVIOUR_DEFAULT_APP]
             if (tapBehavior != TAP_BEHAVIOUR_NONE) {
                 views.setOnClickPendingIntent(
                     R.id.renderImg,
@@ -179,7 +165,7 @@ class MarkdownFileWidget : AppWidgetProvider() {
      * @param cb the callback to be invoked
      */
     private fun loadRenderer(context: Context, appWidgetId: Int, checkForChange: Boolean, cb: (()->Unit)) {
-        val fileUri = Uri.parse(loadPref(context, appWidgetId, PREF_FILE, ""))
+        val fileUri = Uri.parse(prefs[appWidgetId, PREF_FILE, ""])
         val s = loadMarkdown(context, fileUri)
         var md = cachedMarkdown[appWidgetId]
         if (md == null || (checkForChange && md.needsUpdate(s))) {
@@ -215,8 +201,8 @@ internal fun getUpdatePendingIntent(context: Context, appWidgetId: Int): Pending
 }
 
 /**
- * Returns the Intent to be used to request the invocation of the Markdown editor
- * Depends on the configured method during Widget creation
+ * Returns the Intent to be used to request the invocation of the Markdown editor.
+ * Depends on the configured method during Widget creation.
  * @param uri Uri of the file
  * @param tapBehavior configured Tap method
  * @return pending intent

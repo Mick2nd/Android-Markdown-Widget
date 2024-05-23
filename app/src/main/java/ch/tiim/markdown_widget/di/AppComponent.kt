@@ -1,23 +1,22 @@
 package ch.tiim.markdown_widget.di
 
 import android.content.Context
-import android.os.Environment
 import ch.tiim.markdown_widget.ExternalStoragePathHandlerAlt
 import ch.tiim.markdown_widget.FileChecker
+import ch.tiim.markdown_widget.Preferences
+import ch.tiim.markdown_widget.StoragePermissionChecker
 import dagger.BindsInstance
 import dagger.Component
-import dagger.Provides
 import javax.inject.Singleton
 
 /**
- * Serves as the CONTAINER for the DI
+ * Serves as the MAIN CONTAINER for the DI
  */
-@Component(modules = [AppModule::class, ContextModule::class, StringModule::class])
+@Component(modules = [AppModule::class, UriModule::class])
 @Singleton
 interface AppComponent {
     companion object {
         lateinit var instance: AppComponent
-        var isCreated = false
 
         /**
          * Supports one time creation of the singleton instance
@@ -27,44 +26,29 @@ interface AppComponent {
          * @return the created (singleton) instance
          */
         fun create(context: Context, type: String) : AppComponent {
-            if (!isCreated) {
-                instance = DaggerAppComponent
-                    .builder()
-                    .contextModule(ContextModule(context))
-                    .stringModule(StringModule(type))
-                    .build()
-
-                with(instance) {
-                    inject(externalStoragePathHandler())
-                    externalStoragePathHandler().restoreState()
-                }
-                isCreated = true
-            }
+            instance = DaggerAppComponent.factory().create(context, type)
             return instance
         }
     }
 
-    /* COULD NOT WORK WITH THESE APPROACHES
-     *
-    @Component.Builder
-    interface Builder {
-        // @BindsInstance
-        fun contextModule(context: Context) : Builder
+    @Singleton
+    fun externalStoragePathHandler() : ExternalStoragePathHandlerAlt
 
-        // @BindsInstance
-        fun stringModule(type: String) : Builder
+    @Singleton
+    fun storagePermissionChecker() : StoragePermissionChecker
 
-        fun build() : AppComponent
-    }
+    @Singleton
+    fun fileChecker() : FileChecker
+
+    @Singleton
+    fun preferences() : Preferences
+
+    fun inject(handler: ExternalStoragePathHandlerAlt)
+
+    fun inject(checker: StoragePermissionChecker)
 
     @Component.Factory
     interface Factory {
         fun create(@BindsInstance context: Context, @BindsInstance type: String) : AppComponent
     }
-     */
-
-    @Singleton
-    fun externalStoragePathHandler() : ExternalStoragePathHandlerAlt
-
-    fun inject(handler: ExternalStoragePathHandlerAlt)
 }

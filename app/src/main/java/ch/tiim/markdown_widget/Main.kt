@@ -8,7 +8,7 @@ import ch.tiim.markdown_widget.di.AppComponent
 private const val TAG = "Main"
 
 class Main : Application() {
-    lateinit var appComponent: AppComponent
+    private lateinit var appComponent: AppComponent
 
     override fun onCreate() {
         super.onCreate()

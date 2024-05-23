@@ -1,6 +1,5 @@
 package ch.tiim.markdown_widget
 
-import android.content.Context
 import android.util.Log
 import com.vladsch.flexmark.ext.admonition.AdmonitionExtension
 import com.vladsch.flexmark.ext.gfm.strikethrough.StrikethroughExtension
