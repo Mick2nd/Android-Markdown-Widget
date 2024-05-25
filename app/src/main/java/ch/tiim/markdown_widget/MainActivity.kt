@@ -1,24 +1,14 @@
 package ch.tiim.markdown_widget
 
 import android.content.Intent
-import android.content.res.Configuration
 import android.net.Uri
 import android.os.Bundle
-import android.os.Environment
-import android.os.PersistableBundle
 import android.util.Log
 import android.view.View
 import android.widget.Button
 import android.widget.LinearLayout
 import androidx.appcompat.app.AppCompatActivity
 import ch.tiim.markdown_widget.di.AppComponent
-import ch.tiim.markdown_widget.di.ContextModule
-import ch.tiim.markdown_widget.di.DaggerAppComponent
-import ch.tiim.markdown_widget.di.StringModule
-import kotlinx.coroutines.GlobalScope
-import kotlinx.coroutines.MainScope
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
 
 private const val DEBUG = true
 private const val TAG = "MainActivity"

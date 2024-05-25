@@ -5,14 +5,14 @@ import ch.tiim.markdown_widget.MainActivity
 import ch.tiim.markdown_widget.MarkdownFileWidgetConfigureActivity
 import dagger.BindsInstance
 import dagger.Component
+import dagger.Subcomponent
 
 /**
  * Component with [ActivityScope].
  * Intent is to provide dependencies for Activities per injection
  */
-@Component(
-    modules = [ActivityModule::class],
-    dependencies = [AppComponent::class]
+@Subcomponent(
+    modules = [ActivityModule::class]
 )
 @ActivityScope
 interface ActivityComponent {
@@ -23,15 +23,13 @@ interface ActivityComponent {
 
     fun inject(activity: MainActivity)
 
-    @Component.Factory
+    @Subcomponent.Factory
     interface Factory {
         /**
          * Factory of the component with [ActivityScope]
          */
         @ActivityScope
         fun create(
-            @BindsInstance path: String,
-            applicationComponent: AppComponent
         ) : ActivityComponent
     }
 }

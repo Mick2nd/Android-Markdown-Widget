@@ -2,7 +2,7 @@ package ch.tiim.markdown_widget.di
 
 import android.content.Context
 import ch.tiim.markdown_widget.ExternalStoragePathHandlerAlt
-import ch.tiim.markdown_widget.FileChecker
+import ch.tiim.markdown_widget.FileServices
 import ch.tiim.markdown_widget.Preferences
 import ch.tiim.markdown_widget.StoragePermissionChecker
 import dagger.BindsInstance
@@ -38,17 +38,21 @@ interface AppComponent {
     fun storagePermissionChecker() : StoragePermissionChecker
 
     @Singleton
-    fun fileChecker() : FileChecker
+    fun fileChecker() : FileServices
 
     @Singleton
     fun preferences() : Preferences
+
+    fun activityComponentFactory(): ActivityComponent.Factory
 
     fun inject(handler: ExternalStoragePathHandlerAlt)
 
     fun inject(checker: StoragePermissionChecker)
 
     @Component.Factory
+    @Singleton
     interface Factory {
+        @Singleton
         fun create(@BindsInstance context: Context, @BindsInstance type: String) : AppComponent
     }
 }

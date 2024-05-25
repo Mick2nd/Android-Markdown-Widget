@@ -148,7 +148,7 @@ class MarkdownRenderer(
 class JsObject (val theme: String, val html: String)
 {
     @JavascriptInterface
-    public fun injectTheme() : String {
+    fun injectTheme() : String {
         return theme
     }
 
@@ -156,7 +156,7 @@ class JsObject (val theme: String, val html: String)
      * In Js we can query for the rendered markdown to be injected into the html body
      */
     @JavascriptInterface
-    public fun injectHtml() : String {
+    fun injectHtml() : String {
         return html
     }
 }
@@ -164,7 +164,7 @@ class JsObject (val theme: String, val html: String)
 /**
 * Executes the given [block] and returns elapsed time in milliseconds.
 */
-public inline fun measureTimeMillis(block: () -> Unit): Long {
+inline fun measureTimeMillis(block: () -> Unit): Long {
     val start = System.currentTimeMillis()
     block()
     return System.currentTimeMillis() - start

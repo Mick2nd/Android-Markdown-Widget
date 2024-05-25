@@ -2,14 +2,10 @@ package ch.tiim.markdown_widget
 
 import android.content.Context
 import android.net.Uri
-import android.provider.DocumentsContract
-import android.provider.OpenableColumns
 import android.util.Log
 import android.webkit.WebResourceResponse
 import androidx.webkit.WebViewAssetLoader
-import ch.tiim.markdown_widget.di.Wrapper
 import java.io.File
-import java.io.FileNotFoundException
 import java.io.InputStream
 import javax.inject.Inject
 import javax.inject.Singleton

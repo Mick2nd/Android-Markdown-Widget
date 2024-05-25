@@ -18,11 +18,6 @@ import android.util.Log
 import android.util.SparseArray
 import android.widget.RemoteViews
 import ch.tiim.markdown_widget.di.AppComponent
-import java.io.BufferedReader
-import java.io.FileNotFoundException
-import java.io.InputStream
-import java.io.InputStreamReader
-
 
 private const val TAG = "MarkdownFileWidget"
 
@@ -39,6 +34,8 @@ class MarkdownFileWidget : AppWidgetProvider() {
 
     /**
      * Updates all requested Widgets
+     *
+     * @param context the [Context] instance
      * @param appWidgetIds array of requested widgets
      */
     override fun onUpdate(
@@ -46,7 +43,6 @@ class MarkdownFileWidget : AppWidgetProvider() {
         appWidgetManager: AppWidgetManager,
         appWidgetIds: IntArray
     ) {
-        // There may be multiple widgets active, so update all of them
         Log.i(TAG, "onUpdate")
         for (appWidgetId in appWidgetIds) {
             updateAppWidget(context, appWidgetManager, appWidgetId)
@@ -55,7 +51,11 @@ class MarkdownFileWidget : AppWidgetProvider() {
 
     /**
      * Handles changed options, but especially View dimension changes
+     *
+     * @param context the [Context] instance
+     * @param appWidgetManager the [AppWidgetManager]
      * @param appWidgetId id of the Widget to be changed
+     * @param newOptions
      */
     override fun onAppWidgetOptionsChanged(
         context: Context,
@@ -87,6 +87,9 @@ class MarkdownFileWidget : AppWidgetProvider() {
 
     /**
      * When the user deletes the widget, delete the preference associated with it.
+     *
+     * @param context the [Context] instance
+     * @param appWidgetIds array of app widgets
      */
     override fun onDeleted(context: Context, appWidgetIds: IntArray) {
         Log.i(TAG, "onDeleted")
@@ -97,21 +100,26 @@ class MarkdownFileWidget : AppWidgetProvider() {
     }
 
     /**
-     * Enter relevant functionality for when the first widget is created
+     * Enter relevant functionality for when the first widget is created.
+     *
+     * @param context the [Context] instance
+     *
      */
     override fun onEnabled(context: Context) {
         Log.i(TAG, "onEnabled")
     }
 
     /**
-     * Enter relevant functionality for when the last widget is disabled
+     * Enter relevant functionality for when the last widget is disabled.
+     *
+     * @param context the [Context] instance
      */
     override fun onDisabled(context: Context) {
         Log.i(TAG, "onDisabled")
     }
 
     /**
-     * THIS OVERRIDE IS NORMALLY NOT REQUIRED
+     * THIS OVERRIDE IS NORMALLY NOT REQUIRED. BASE CLASS IMPLEMENTATION IS SUFFICIENT.
      */
     override fun onReceive(context: Context?, intent: Intent?) {
         Log.d(TAG, "onReceive ${intent!!.action!!}")
@@ -119,7 +127,11 @@ class MarkdownFileWidget : AppWidgetProvider() {
     }
 
     /**
-     * Updates a single widget
+     * Updates a single widget.
+     *
+     * @param context the [Context] instance
+     * @param appWidgetManager the [AppWidgetManager]
+     * @param appWidgetId the integer id of the app widget
      */
     private fun updateAppWidget(
         context: Context,
@@ -142,7 +154,7 @@ class MarkdownFileWidget : AppWidgetProvider() {
             if (tapBehavior != TAP_BEHAVIOUR_NONE) {
                 views.setOnClickPendingIntent(
                     R.id.renderImg,
-                    getIntent(context, fileUri, tapBehavior, context.contentResolver)
+                    getIntent(context, fileUri, tapBehavior)
                 )
             }
 
@@ -157,16 +169,17 @@ class MarkdownFileWidget : AppWidgetProvider() {
     }
 
     /**
-     * Either instantiates a Renderer instance or extracts it from Cache
-     * In either case the content of the Widget is drawn
-     * Finally the given callback is invoked
+     * Either instantiates a Renderer instance or extracts it from Cache.
+     * In either case the content of the Widget is drawn.
+     * Finally the given callback is invoked.
+     *
      * @param appWidgetId the Widget
      * @param checkForChange defines the relevance of the *needsUpdate* call
      * @param cb the callback to be invoked
      */
     private fun loadRenderer(context: Context, appWidgetId: Int, checkForChange: Boolean, cb: (()->Unit)) {
-        val fileUri = Uri.parse(prefs[appWidgetId, PREF_FILE, ""])
-        val s = loadMarkdown(context, fileUri)
+        val fileUri = prefs.markdownUriOf(appWidgetId)
+        val s = FileServices(context, fileUri).content
         var md = cachedMarkdown[appWidgetId]
         if (md == null || (checkForChange && md.needsUpdate(s))) {
             val widgetSizeProvider = WidgetSizeProvider(context)
@@ -184,7 +197,11 @@ class MarkdownFileWidget : AppWidgetProvider() {
 }
 
 /**
- * Can be used to Broadcast update requests to the own Widget
+ * Can be used to Broadcast update requests to the own Widget.
+ *
+ * @param context the [Context] instance
+ * @param appWidgetId the integer id of the app widget
+ * @return intent of type [PendingIntent]
  */
 internal fun getUpdatePendingIntent(context: Context, appWidgetId: Int): PendingIntent {
     val intentUpdate = Intent(context, MarkdownFileWidget::class.java)
@@ -203,11 +220,12 @@ internal fun getUpdatePendingIntent(context: Context, appWidgetId: Int): Pending
 /**
  * Returns the Intent to be used to request the invocation of the Markdown editor.
  * Depends on the configured method during Widget creation.
+ *
  * @param uri Uri of the file
  * @param tapBehavior configured Tap method
  * @return pending intent
  */
-fun getIntent(context: Context, uri: Uri, tapBehavior: String, c: ContentResolver): PendingIntent {
+fun getIntent(context: Context, uri: Uri, tapBehavior: String): PendingIntent {
     val intent = Intent(Intent.ACTION_EDIT)
     if (tapBehavior == TAP_BEHAVIOUR_DEFAULT_APP) {
         intent.setDataAndType(uri.normalizeScheme(), "text/plain")
@@ -215,57 +233,9 @@ fun getIntent(context: Context, uri: Uri, tapBehavior: String, c: ContentResolve
         intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
         intent.flags = Intent.FLAG_GRANT_WRITE_URI_PERMISSION
     } else if (tapBehavior == TAP_BEHAVIOUR_OBSIDIAN) {
-        intent.data = Uri.parse("obsidian://open?file=" + Uri.encode(getFileName(uri, c)))
+        intent.data = uri.toObsidian(context)
     }
     return PendingIntent.getActivity(context, 555, intent, PendingIntent.FLAG_IMMUTABLE)
-}
-
-/**
- * Uri to File name converter
- */
-fun getFileName(uri: Uri, c: ContentResolver): String? {
-    var result: String? = null
-    if (uri.scheme == "content") {
-        val cursor: Cursor? = c.query(uri, null, null, null, null)
-        try {
-            if (cursor != null && cursor.moveToFirst()) {
-                val i = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
-                result = cursor.getString(i)
-            }
-        } finally {
-            cursor?.close()
-        }
-    }
-    if (result == null) {
-        result = uri.path
-        val cut = result!!.lastIndexOf('/')
-        if (cut != -1) {
-            result = result.substring(cut + 1)
-        }
-    }
-    return result
-}
-
-/**
- * Loads the Markdown given the Uri of a file
- * @param uri the Uri of a file
- * @return the string containing the Markdown
- */
-fun loadMarkdown(context: Context, uri: Uri): String {
-    try {
-        Log.i(TAG, uri.toString())
-        val ins: InputStream = context.contentResolver.openInputStream(uri)!!
-        val reader = BufferedReader(InputStreamReader(ins, "utf-8"))
-        val data = reader.lines().reduce { s, t -> s + "\n" + t }
-        reader.close()
-        ins.close()
-        return data.get()
-    } catch (err: FileNotFoundException) {
-        return err.toString()
-    } catch (err: Exception) {
-        return err.toString()
-    } finally {
-    }
 }
 
 /**
@@ -275,7 +245,8 @@ class WidgetSizeProvider(
     private val context: Context // Do not pass Application context
 ) {
     /**
-     * Returns Dimensions of Widget as stored in the options
+     * Returns Dimensions of Widget as stored in the options.
+     *
      * @param widgetId the id of the widget
      * @return Dimensions in Density Points
      */
@@ -294,7 +265,8 @@ class WidgetSizeProvider(
     }
 
     /**
-     * Returns the Dimensions of the Screen
+     * Returns the Dimensions of the Screen.
+     *
      * @return Dimensions in Density Points
      */
     fun getScreenSize() : Pair<Int, Int> {

@@ -20,6 +20,8 @@ import androidx.core.net.toFile
 import androidx.core.util.keyIterator
 import androidx.lifecycle.AndroidViewModel
 import ch.tiim.markdown_widget.di.AppComponent
+import java.io.File
+import java.net.URI
 
 private const val TAG = "UpdateService"
 private const val NOTIFICATION = 1
@@ -169,11 +171,10 @@ class UpdateService : Service() {
 
 /**
  * Does the real work: watching for file changes of the userstyle.css file and performing widget updates.
+ * STATUS: NOT WORKING WITH FILES with content scheme, e.g. *userstyle.css* in Documents folder.
  */
 fun createStylesObserver(context: Context) : FileObserver {
-    fun getUserStyle(): Uri {
-        return AppComponent.instance.preferences()["userstyle.css"]
-    }
+    fun getUserStyle() = AppComponent.instance.preferences().userDocumentUriOf("userstyle.css")
 
     fun sendUpdateRequest(context: Context) {
         Log.i(TAG, "UserStyle.css updated")
@@ -185,7 +186,7 @@ fun createStylesObserver(context: Context) : FileObserver {
 
     val o =
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q)
-            object : FileObserver(getUserStyle().toFile(), MODIFY or CREATE) {
+            object : FileObserver(getUserStyle().toFile2(), MODIFY or CREATE) {
                 override fun onEvent(event: Int, path: String?) {
                     sendUpdateRequest(context)
                 }

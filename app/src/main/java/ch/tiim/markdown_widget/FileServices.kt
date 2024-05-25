@@ -8,10 +8,9 @@ import java.io.FileNotFoundException
 import java.io.InputStream
 import java.io.InputStreamReader
 import javax.inject.Inject
-import javax.inject.Named
 import javax.inject.Singleton
 
-private const val TAG = "FileChecker"
+private const val TAG = "FileServices"
 
 /**
  * This class is meant as checker for the *userstyle.css* file changes
@@ -20,27 +19,27 @@ private const val TAG = "FileChecker"
  * @param uri the complete Uri of the file to be checked
  */
 @Singleton
-class FileChecker @Inject constructor (val context: Context, private val prefs: Preferences) {
+class FileServices @Inject constructor (val context: Context, private val uri: Uri) {
 
+    var content: String = ""
     private var err: Exception? = null
-    private var state: String = ""
 
     init {
-        Log.d(TAG, "File Checker $this instantiated")
+        Log.i(TAG, "File Checker $this instantiated with uri $uri")
         updateState()
     }
 
     fun updateState() {
-        state = loadFile()
+        content = loadFile()
     }
 
     fun stateChanged(): Boolean {
-        return loadFile() != state
+        return loadFile() != content
     }
 
     private fun loadFile(): String {
         try {
-            val ins: InputStream = context.contentResolver.openInputStream(prefs["userstyle.css"])!!
+            val ins: InputStream = context.contentResolver.openInputStream(uri)!!
             val reader = BufferedReader(InputStreamReader(ins, "utf-8"))
             val data = reader.lines().reduce { s, t -> s + "\n" + t }
             reader.close()

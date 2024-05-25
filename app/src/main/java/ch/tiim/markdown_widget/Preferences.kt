@@ -17,7 +17,7 @@ private const val PREF_PREFIX_KEY = "appwidget_"
 private const val TAG = "Preferences"
 
 /**
- * Supports reading/writing from/to SharedPreferences object
+ * Supports reading/writing from/to SharedPreferences object.
  * Here means:
  * - global: application wide setting
  * - individual: setting related to given app widget (by its id)
@@ -37,15 +37,17 @@ class Preferences(private val context: Context) {
      * @return the read preference
      */
     operator fun get(prefName: String, default: String) : String {
-        if (prefName !in cache) {
-            val prefs = context.getSharedPreferences(PREFS_NAME, 0)
-            val value = prefs.getString(prefName, default)
-            cache[prefName] = value ?: default
+        synchronized(this) {
+            if (prefName !in cache) {
+                val prefs = context.getSharedPreferences(PREFS_NAME, 0)
+                val value = prefs.getString(prefName, default)
+                cache[prefName] = value ?: default
+            }
+            cache[prefName]?.let {
+                return it
+            }
+            return ""
         }
-        cache[prefName]?.let {
-            return it
-        }
-        return ""
     }
 
     /**
@@ -100,11 +102,13 @@ class Preferences(private val context: Context) {
      * @param value the value to be written
      */
     operator fun set(prefName: String, value: String) {
-        if (prefName !in cache || cache[prefName] != value) {
-            cache[prefName] = value
-            val prefs = context.getSharedPreferences(PREFS_NAME, 0).edit()
-            prefs.putString(prefName, value)
-            prefs.apply()
+        synchronized(this) {
+            if (prefName !in cache || cache[prefName] != value) {
+                cache[prefName] = value
+                val prefs = context.getSharedPreferences(PREFS_NAME, 0).edit()
+                prefs.putString(prefName, value)
+                prefs.apply()
+            }
         }
     }
 
@@ -166,10 +170,10 @@ class Preferences(private val context: Context) {
             val encodedUri = this[ENCODED_FOLDER_URI, ""]
             if (encodedUri != "") {
                 val uri = Uri.parse(Uri.decode(encodedUri))
-                Log.d(TAG, "Decoded Folder Uri from app state")
+                Log.d(TAG, "Decoded Folder Uri from app state: $uri")
                 return uri
             }
-            return null
+            return Uri.Builder().build()
         }
         set(value) {
             if (value == null)
@@ -208,6 +212,8 @@ class Preferences(private val context: Context) {
         }
 
         cursor?.close()
+        // return ""
+        // NOT COMPATIBLE WITH MOCKITO
         throw FileNotFoundException("Document $path not found")
     }
 }

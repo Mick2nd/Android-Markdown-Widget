@@ -11,7 +11,6 @@ import android.util.Log
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
-import ch.tiim.markdown_widget.di.Wrapper
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -37,12 +36,11 @@ class StoragePermissionCheckerImpl @Inject constructor(
      * @param onReady displays the Debug content. optional.
      * @return returns the Uri of the selected folder or null, not used at the moment
      */
-    override fun requestAccess(activity: AppCompatActivity, onReady: (folderUri: Uri) -> Unit) : Unit {
+    override fun requestAccess(activity: AppCompatActivity, onReady: (folderUri: Uri) -> Unit) {
         prefs.userFolderUri?.let {
             onReady(it)
             return
         }
-        var isReady = false
         val job = CoroutineScope(Dispatchers.Main.immediate).launch {
             suspendCoroutine<Boolean> { continuation ->
                 val resultLauncher = activity.registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
@@ -56,7 +54,6 @@ class StoragePermissionCheckerImpl @Inject constructor(
                                     Log.i(TAG, "Request of OPEN_DOCUMENT_TREE succeeded: $it")
                                     context.contentResolver.takePersistableUriPermission(it, Intent.FLAG_GRANT_READ_URI_PERMISSION)
                                     prefs.userFolderUri = it
-                                    isReady = true
                                     resumed = true
                                     onReady(it)
 
@@ -82,8 +79,8 @@ class StoragePermissionCheckerImpl @Inject constructor(
                 val file = Environment.getExternalStoragePublicDirectory(type)
                 val uri = Uri.fromFile(file)
                 val intent = Intent(Intent.ACTION_OPEN_DOCUMENT_TREE).apply {
-                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-                    addCategory(Intent.CATEGORY_DEFAULT);
+                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                    addCategory(Intent.CATEGORY_DEFAULT)
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                         putExtra(DocumentsContract.EXTRA_INITIAL_URI, uri)
                     }
@@ -99,6 +96,6 @@ class StoragePermissionCheckerImpl @Inject constructor(
  */
 interface StoragePermissionChecker {
 
-    fun requestAccess(activity: AppCompatActivity, onReady: (folderUri: Uri) -> Unit = { }) : Unit
+    fun requestAccess(activity: AppCompatActivity, onReady: (folderUri: Uri) -> Unit = { })
 
 }

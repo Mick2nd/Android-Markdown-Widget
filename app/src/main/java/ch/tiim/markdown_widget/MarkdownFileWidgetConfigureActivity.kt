@@ -10,11 +10,8 @@ import android.webkit.MimeTypeMap
 import android.widget.EditText
 import android.widget.RadioGroup
 import ch.tiim.markdown_widget.databinding.MarkdownFileWidgetConfigureBinding
-import ch.tiim.markdown_widget.di.ActivityScope
 import ch.tiim.markdown_widget.di.AppComponent
-import ch.tiim.markdown_widget.di.DaggerActivityComponent
 import javax.inject.Inject
-import javax.inject.Singleton
 
 internal const val TAP_BEHAVIOUR_NONE = "none"
 internal const val TAP_BEHAVIOUR_DEFAULT_APP = "default_app"
@@ -30,7 +27,8 @@ class MarkdownFileWidgetConfigureActivity @Inject constructor() : Activity() {
     // We can either use this construct and use Preferences as "Singleton"
     // Or inject Preferences without being Singleton (@Inject lateinit var)
     // Or we inject and make Preference de facto a real Singleton
-    val prefs: Preferences = AppComponent.instance.preferences()
+    // val prefs: Preferences = AppComponent.instance.preferences()
+    @Inject lateinit var prefs: Preferences
 
     private var appWidgetId = AppWidgetManager.INVALID_APPWIDGET_ID
     private lateinit var inputFilePath: EditText
@@ -111,8 +109,8 @@ class MarkdownFileWidgetConfigureActivity @Inject constructor() : Activity() {
     public override fun onCreate(icicle: Bundle?) {
         super.onCreate(icicle)
 
-        DaggerActivityComponent.factory()
-            .create("test", AppComponent.instance)
+        AppComponent.instance.activityComponentFactory()
+            .create()
             .inject(this)
 
         // Set the result to CANCELED.  This will cause the widget host to cancel

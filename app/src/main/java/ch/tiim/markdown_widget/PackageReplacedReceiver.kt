@@ -13,7 +13,7 @@ private const val TAG = "PackageReplacedReceiver"
 /**
  * Handles the following broadcasts:
  * - [ACTION_MY_PACKAGE_REPLACED] (new installation of the app)
- * - [BOOT_COMPLETED] (reboot of the system)
+ * - BOOT_COMPLETED (reboot of the system)
  *
  * Intention was to restart the update service because that's not done automatically.
  */
