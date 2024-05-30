@@ -73,6 +73,7 @@ fun Uri.toObsidian(context: Context) : Uri {
 
 /**
  * An improvement of the Kotlin version. That version cannot convert Uris with 'content' scheme.
+ * This is just a trial.
  *
  * @receiver Uri with 'content' or 'file' scheme
  * @return File instance

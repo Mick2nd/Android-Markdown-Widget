@@ -4,7 +4,6 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.os.Build
-import android.os.Environment
 import android.util.Log
 import android.webkit.JavascriptInterface
 import android.webkit.WebSettings.LOAD_NO_CACHE
@@ -15,8 +14,20 @@ import androidx.webkit.WebViewAssetLoader.AssetsPathHandler
 import androidx.webkit.WebViewAssetLoader.InternalStoragePathHandler
 import ch.tiim.markdown_widget.di.AppComponent
 import java.io.File
+import javax.inject.Inject
+import javax.inject.Named
 
 private const val TAG = "MarkdownRenderer"
+
+/**
+ * Renders a given html string into a [WebView] and returns [Bitmap] copies of it.
+ *
+ * @param context the context
+ * @param width the width
+ * @param height the height
+ * @param data the md string to be rendered
+ * @param onReady a callback to be invoked when [WebView] becomes ready
+ */
 class MarkdownRenderer(
     private val context: Context,
     private val width: Int = 0,
@@ -26,20 +37,79 @@ class MarkdownRenderer(
 ) {
     var webView: WebView? = null
 
-    private val fileChecker = AppComponent.instance.fileChecker()
+    @Inject lateinit var fileChecker: FileServices
+    @Inject @Named("GLOBAL") lateinit var pathHandlerAlt:  WebViewAssetLoader.PathHandler
+    @Inject @Named("EXTERNAL") lateinit var pathHandler: WebViewAssetLoader.PathHandler
     private val theme = ""
     private var ready = false
     private var time: Long = 0
     private var html = ""
 
+    /**
+     * Init block. Performs first time rendering. Responsible for DI per Dagger too.
+     */
     init {
+        AppComponent.instance.inject(this)
         time = System.currentTimeMillis()
+
         html = getHtml(data)
         val duration = System.currentTimeMillis() - time
         Log.d(TAG, "Duration of Html rendering: ${duration}ms")
         prepareWebView(html)
     }
 
+    /**
+     * Refreshes the [WebView] inside an existing instance.
+     */
+    fun refresh(onReady: (() -> Unit)) {
+        this.onReady = onReady
+        ready = false
+        prepareWebView(html)
+
+        // Seems to be not so reliable:
+        // webView?.loadUrl("https://appassets.androidplatform.net/assets/index.html")
+        // webView?.reload()
+    }
+
+    /**
+     * Queries for the ready state of the rendering.
+     */
+    fun isReady() : Boolean {
+        return ready && webView!!.contentHeight != 0 && !fileChecker.stateChanged
+    }
+
+    /**
+     * Queries the [Bitmap] of the rendered markdown.
+     */
+    fun getBitmap(width: Int, height: Int): Bitmap {
+        if (!isReady()) {
+            Log.e(TAG, "WebView is not ready yet!")
+        }
+
+        Log.d(TAG, "Here in getBitmap")
+        val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(bitmap)
+        webView!!.draw(canvas)
+        Log.i(TAG, "$bitmap, execution in ${time}ms")
+        return bitmap
+    }
+
+    /**
+     * Queries if an update of a [MarkdownFileWidget] is required. This depends on the states of
+     * the md string and the *userstyle.css* file.
+     *
+     * @param s a new md string
+     * @return flag indicating whether an update is required
+     */
+    fun needsUpdate(s: String) : Boolean {
+        return this.data != s || fileChecker.stateChanged
+    }
+
+    /**
+     * Renders the given html into the [WebView]. On completion invokes the onReady callback.
+     *
+     * @param html html to be rendered. This will be injected into the complete html document *index.html*
+     */
     private fun prepareWebView(
         html: String
     ) {
@@ -47,7 +117,7 @@ class MarkdownRenderer(
         webView = WebView(context)
 
         /**
-         * The Asset Loader implements an interception mechanism for web site content
+         * The Asset Loader implements an interception mechanism for web site content:
          * - with an **assets** sub folder one can load all files in the app assets folder
          * - with **public** one can load files from the internal app folder under files/public
          * - with **documents** one can load files from app specific external folder
@@ -60,10 +130,10 @@ class MarkdownRenderer(
         val assetLoader = WebViewAssetLoader.Builder()
             .addPathHandler("/assets/", AssetsPathHandler(context))
             .addPathHandler("/public/", InternalStoragePathHandler(context, File(context.filesDir, "public")))
-            .addPathHandler("/documents/", ExternalStoragePathHandler(context, Environment.DIRECTORY_DOCUMENTS))
+            .addPathHandler("/documents/", pathHandler)
 
             // THIS HANDLER NEEDS EXTRA INJECTION OUTSIDE THIS CODE
-            .addPathHandler("/documents-public/", AppComponent.instance.externalStoragePathHandler() as WebViewAssetLoader.PathHandler)
+            .addPathHandler("/documents-public/", pathHandlerAlt)
             .build()
 
         webView!!.let {
@@ -103,61 +173,40 @@ class MarkdownRenderer(
         }
     }
 
-    fun refresh(onReady: (() -> Unit)) {
-        this.onReady = onReady
-        ready = false
-        prepareWebView(html)
-
-        // Seems to be not so reliable:
-        // webView?.loadUrl("https://appassets.androidplatform.net/assets/index.html")
-        // webView?.reload()
-    }
-
-    fun isReady():Boolean {
-        return ready && webView!!.contentHeight != 0 && !fileChecker.stateChanged()
-    }
-
-    fun getBitmap(width: Int, height: Int): Bitmap {
-        if (!isReady()) {
-            Log.e(TAG, "WebView is not ready yet!")
-        }
-
-        Log.d(TAG, "Here in getBitmap")
-        val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
-        val canvas = Canvas(bitmap)
-        webView!!.draw(canvas)
-        Log.i(TAG, "$bitmap, execution in ${time}ms")
-        return bitmap
-    }
-
+    /**
+     * Given the md string this parses it into a html string
+     *
+     * @param data the md string
+     * @return the ready to be used html string
+     */
     private fun getHtml(data: String): String {
         val mdParser = MarkdownParser(theme)
         return mdParser.parse(data)
     }
 
-    fun needsUpdate(s: String):Boolean {
-        return this.data != s || fileChecker.stateChanged()
-    }
-}
-
-/**
- * This object allows injection of information into the index.html file as js object
- * @property theme a theme string
- * @property html the html created from markdown
- */
-class JsObject (val theme: String, val html: String)
-{
-    @JavascriptInterface
-    fun injectTheme() : String {
-        return theme
-    }
-
     /**
-     * In Js we can query for the rendered markdown to be injected into the html body
+     * This object allows injection of information into the index.html file as js object
+     *
+     * @property theme a theme string
+     * @property html the html created from markdown
      */
-    @JavascriptInterface
-    fun injectHtml() : String {
-        return html
+    class JsObject (val theme: String, val html: String)
+    {
+        /**
+         * Used inside Js code to inject a theme string.
+         */
+        @JavascriptInterface
+        fun injectTheme() : String {
+            return theme
+        }
+
+        /**
+         * In Js we can query for the rendered markdown to be injected into the html body.
+         */
+        @JavascriptInterface
+        fun injectHtml() : String {
+            return html
+        }
     }
 }
 

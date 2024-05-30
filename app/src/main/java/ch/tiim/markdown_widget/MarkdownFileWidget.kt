@@ -3,21 +3,19 @@ package ch.tiim.markdown_widget
 import android.app.PendingIntent
 import android.appwidget.AppWidgetManager
 import android.appwidget.AppWidgetProvider
-import android.content.ContentResolver
 import android.content.Context
 import android.content.Intent
 import android.content.res.Configuration.ORIENTATION_PORTRAIT
 import android.content.res.Resources
-import android.database.Cursor
 import android.net.Uri
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
-import android.provider.OpenableColumns
 import android.util.Log
 import android.util.SparseArray
 import android.widget.RemoteViews
 import ch.tiim.markdown_widget.di.AppComponent
+import javax.inject.Inject
 
 private const val TAG = "MarkdownFileWidget"
 
@@ -30,7 +28,16 @@ class MarkdownFileWidget : AppWidgetProvider() {
         val cachedMarkdown: SparseArray<MarkdownRenderer> = SparseArray()
     }
 
-    private val prefs = AppComponent.instance.preferences()
+    /**
+     * Preferences injected in this central location.
+     */
+    @Inject
+    lateinit var prefs: Preferences
+
+    init {
+        Log.d(TAG, "Here in init")
+        AppComponent.instance.inject(this)
+    }
 
     /**
      * Updates all requested Widgets

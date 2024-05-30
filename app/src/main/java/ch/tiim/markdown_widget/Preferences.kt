@@ -11,8 +11,8 @@ internal const val PREF_FILE = "filepath"
 internal const val PREF_BEHAVIOUR = "behaviour"
 internal const val ENCODED_FOLDER_URI = "encodedFolderUri"
 
+internal const val PREF_PREFIX_KEY = "appwidget_"
 private const val PREFS_NAME = "ch.tiim.markdown_widget.MarkdownFileWidget"
-private const val PREF_PREFIX_KEY = "appwidget_"
 
 private const val TAG = "Preferences"
 
@@ -22,7 +22,7 @@ private const val TAG = "Preferences"
  * - global: application wide setting
  * - individual: setting related to given app widget (by its id)
  */
-class Preferences(private val context: Context) {
+open class Preferences(private val context: Context) {
 
     private val cache = HashMap<String, String>()
 
@@ -31,12 +31,19 @@ class Preferences(private val context: Context) {
     }
 
     /**
+     * Clears the cache. The stored settings should be available anyway.
+     */
+    fun clearCache() {
+        cache.clear()
+    }
+
+    /**
      * Read "Global" preference
      * @param prefName the global preference name
      * @param default the default value
      * @return the read preference
      */
-    operator fun get(prefName: String, default: String) : String {
+    open operator fun get(prefName: String, default: String) : String {
         synchronized(this) {
             if (prefName !in cache) {
                 val prefs = context.getSharedPreferences(PREFS_NAME, 0)
@@ -101,7 +108,7 @@ class Preferences(private val context: Context) {
      * @param prefName the global preference name
      * @param value the value to be written
      */
-    operator fun set(prefName: String, value: String) {
+    open operator fun set(prefName: String, value: String) {
         synchronized(this) {
             if (prefName !in cache || cache[prefName] != value) {
                 cache[prefName] = value

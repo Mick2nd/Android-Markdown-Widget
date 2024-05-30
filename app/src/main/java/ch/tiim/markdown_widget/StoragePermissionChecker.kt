@@ -29,12 +29,12 @@ class StoragePermissionCheckerImpl @Inject constructor(
     private val prefs: Preferences) : StoragePermissionChecker {
 
     /**
-     * THIS SECTION IS A TRIAL TO GAIN ACCESS TO A USER SELECTED FOLDER
-     * PREFERRED the Public Documents Folder
-     * On completion an internal callback is invoked updating the state of this instance
+     * THIS SECTION IS A TRIAL TO GAIN ACCESS TO A USER SELECTED FOLDER.
+     * PREFERRED the Public Documents Folder.
+     * On completion an internal callback is invoked updating the state of this instance.
+     *
      * @param activity sometimes it is necessary to have a reference to the client activity
      * @param onReady displays the Debug content. optional.
-     * @return returns the Uri of the selected folder or null, not used at the moment
      */
     override fun requestAccess(activity: AppCompatActivity, onReady: (folderUri: Uri) -> Unit) {
         prefs.userFolderUri?.let {

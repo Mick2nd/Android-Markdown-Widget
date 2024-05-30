@@ -18,7 +18,8 @@ private const val TAG = "ExternalStoragePathHandler"
  * @param context the context
  * @param subFolder here the sub folder of the files folder
  */
-class ExternalStoragePathHandler(
+@Singleton
+class ExternalStoragePathHandler @Inject constructor(
     val context: Context,
     private val subFolder: String
     ) : WebViewAssetLoader.PathHandler {
@@ -47,10 +48,10 @@ class ExternalStoragePathHandler(
  * Implemented as SINGLETON
  */
 @Singleton
-class ExternalStoragePathHandlerAltImpl @Inject constructor(
+class ExternalStoragePathHandlerAlt @Inject constructor(
     val context: Context,
     val type: String,
-    private val prefs: Preferences) : WebViewAssetLoader.PathHandler, ExternalStoragePathHandlerAlt {
+    private val prefs: Preferences) : WebViewAssetLoader.PathHandler {
 
     /**
      * Implements the PathHandler interface
@@ -79,10 +80,4 @@ class ExternalStoragePathHandlerAltImpl @Inject constructor(
         Log.i(TAG, "Opened Input Stream at $uri: ${stream != null}")
         return stream!!
     }
-}
-
-/**
- * This interface is used by DI framework Dagger
- */
-interface ExternalStoragePathHandlerAlt {
 }

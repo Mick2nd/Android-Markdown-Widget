@@ -21,16 +21,23 @@ import java.util.*
 
 private const val TAG = "MarkdownParser"
 
+/**
+ * Configures the md parser and provides the *parse* method.
+ */
 class MarkdownParser(private val theme:String) {
 
     val parser: Parser
     val renderer: HtmlRenderer
+
+    /**
+     * Init block
+     */
     init {
         val options = MutableDataSet()
 
         // uncomment to set optional extensions
         options.set(Parser.EXTENSIONS,
-            Arrays.asList(
+            listOf(
                 TablesExtension.create(),
                 SubscriptExtension.create(),
                 SuperscriptExtension.create(),
@@ -61,12 +68,18 @@ class MarkdownParser(private val theme:String) {
         renderer = HtmlRenderer.builder(options).build()
     }
 
+    /**
+     * Parses a given markdown string.
+     *
+     * @param md the markdown string
+     * @return the generated html
+     */
     fun parse(md: String): String {
 
         val document: Node = parser.parse(md)
         val html = renderer.render(document)
 
-        Log.d(TAG, "Rendered MD: " + html)
+        Log.d(TAG, "Rendered MD: $html")
         return html
     }
 }

@@ -1,18 +1,24 @@
 package ch.tiim.markdown_widget.di
 
+import android.app.Application
+import android.appwidget.AppWidgetProvider
 import android.content.Context
-import ch.tiim.markdown_widget.ExternalStoragePathHandlerAlt
+import androidx.webkit.WebViewAssetLoader
 import ch.tiim.markdown_widget.FileServices
+import ch.tiim.markdown_widget.MarkdownFileWidget
+import ch.tiim.markdown_widget.MarkdownRenderer
 import ch.tiim.markdown_widget.Preferences
 import ch.tiim.markdown_widget.StoragePermissionChecker
+import ch.tiim.markdown_widget.UpdateService
 import dagger.BindsInstance
 import dagger.Component
+import javax.inject.Named
 import javax.inject.Singleton
 
 /**
  * Serves as the MAIN CONTAINER for the DI
  */
-@Component(modules = [AppModule::class, UriModule::class])
+@Component(modules = [AppModule::class, UriModule::class, StringModule::class])
 @Singleton
 interface AppComponent {
     companion object {
@@ -21,18 +27,24 @@ interface AppComponent {
         /**
          * Supports one time creation of the singleton instance
          * Succeeding requests must be done per instance
+         *
          * @param context the app context
          * @param type the folder type to be used as initial folder for permission request
          * @return the created (singleton) instance
          */
-        fun create(context: Context, type: String) : AppComponent {
-            instance = DaggerAppComponent.factory().create(context, type)
+        fun create(app: Application, context: Context, type: String) : AppComponent {
+            instance = DaggerAppComponent.factory().create(app, context, type)
             return instance
         }
     }
 
     @Singleton
-    fun externalStoragePathHandler() : ExternalStoragePathHandlerAlt
+    @Named("EXTERNAL")
+    fun externalStoragePathHandler() : WebViewAssetLoader.PathHandler
+
+    @Singleton
+    @Named("GLOBAL")
+    fun externalStoragePathHandlerAlt() : WebViewAssetLoader.PathHandler
 
     @Singleton
     fun storagePermissionChecker() : StoragePermissionChecker
@@ -45,14 +57,24 @@ interface AppComponent {
 
     fun activityComponentFactory(): ActivityComponent.Factory
 
-    fun inject(handler: ExternalStoragePathHandlerAlt)
+    /**
+     * Invocation in app widget did not work.
+     * Reason: proper type must be provided for injection to work.
+     */
+    fun inject(widget: MarkdownFileWidget)
 
-    fun inject(checker: StoragePermissionChecker)
+    fun inject(renderer: MarkdownRenderer)
+
+    fun inject(service: UpdateService)
+
+    // fun inject(handler: WebViewAssetLoader.PathHandler)
+
+    // fun inject(checker: StoragePermissionChecker)
 
     @Component.Factory
     @Singleton
     interface Factory {
         @Singleton
-        fun create(@BindsInstance context: Context, @BindsInstance type: String) : AppComponent
+        fun create(@BindsInstance app: Application, @BindsInstance context: Context, @BindsInstance type: String) : AppComponent
     }
 }

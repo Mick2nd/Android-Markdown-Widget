@@ -13,29 +13,38 @@ import javax.inject.Singleton
 private const val TAG = "FileServices"
 
 /**
- * This class is meant as checker for the *userstyle.css* file changes
- * The check has the same relevance as the check of Markdown changes
- * Actually the location of this file is in the INTERNAL storage of this app
+ * This class is meant as checker for the *userstyle.css* file changes.
+ * The check has the same relevance as the check of Markdown changes.
+ * The location of this file is configured by the [uri].
+ *
+ * @param context the context used to get a contentResolver
  * @param uri the complete Uri of the file to be checked
  */
 @Singleton
-class FileServices @Inject constructor (val context: Context, private val uri: Uri) {
+class FileServices @Inject constructor (private val context: Context, private val uri: Uri) {
 
     var content: String = ""
     private var err: Exception? = null
 
+    /**
+     * Init block, loads the file defined by its uri.
+     */
     init {
         Log.i(TAG, "File Checker $this instantiated with uri $uri")
         updateState()
     }
 
+    /**
+     * Updates the file content.
+     */
     fun updateState() {
         content = loadFile()
     }
 
-    fun stateChanged(): Boolean {
-        return loadFile() != content
-    }
+    val stateChanged
+        get(): Boolean {
+            return loadFile() != content
+        }
 
     private fun loadFile(): String {
         try {

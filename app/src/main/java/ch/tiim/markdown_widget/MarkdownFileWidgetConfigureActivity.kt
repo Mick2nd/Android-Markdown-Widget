@@ -24,16 +24,16 @@ private const val ACTIVITY_RESULT_BROWSE = 1
  */
 class MarkdownFileWidgetConfigureActivity @Inject constructor() : Activity() {
 
-    // We can either use this construct and use Preferences as "Singleton"
-    // Or inject Preferences without being Singleton (@Inject lateinit var)
-    // Or we inject and make Preference de facto a real Singleton
-    // val prefs: Preferences = AppComponent.instance.preferences()
     @Inject lateinit var prefs: Preferences
 
     private var appWidgetId = AppWidgetManager.INVALID_APPWIDGET_ID
     private lateinit var inputFilePath: EditText
     private lateinit var radioGroup: RadioGroup
+    private lateinit var binding: MarkdownFileWidgetConfigureBinding
 
+    /**
+     * OnClickListener handler for browse button.
+     */
     private val onBrowse = View.OnClickListener {
         // Workaround for https://github.com/Tiim/Android-Markdown-Widget/issues/14:
         // Check if MIME-Type "text/markdown" is known. Otherwise fall back to
@@ -52,6 +52,9 @@ class MarkdownFileWidgetConfigureActivity @Inject constructor() : Activity() {
         startActivityForResult(Intent.createChooser(intent, "Select a markdown file"), ACTIVITY_RESULT_BROWSE)
     }
 
+    /**
+     * [onActivityResult] override.
+     */
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         if( requestCode == ACTIVITY_RESULT_BROWSE && resultCode == RESULT_OK && data?.data != null) {
             val uri: Uri = data.data!!;
@@ -66,6 +69,9 @@ class MarkdownFileWidgetConfigureActivity @Inject constructor() : Activity() {
         }
     }
 
+    /**
+     * OnClickListener handler for Add Widget button.
+     */
     private val onAddWidget = View.OnClickListener {
         val context = this@MarkdownFileWidgetConfigureActivity
 
@@ -104,12 +110,14 @@ class MarkdownFileWidgetConfigureActivity @Inject constructor() : Activity() {
 
         finish()
     }
-    private lateinit var binding: MarkdownFileWidgetConfigureBinding
 
+    /**
+     * [onCreate] override. Handles the creation of this activity.
+     */
     public override fun onCreate(icicle: Bundle?) {
         super.onCreate(icicle)
 
-        AppComponent.instance.activityComponentFactory()
+        AppComponent.instance.activityComponentFactory()            // injects what needs to be injected, controlled by Dagger
             .create()
             .inject(this)
 
@@ -125,7 +133,6 @@ class MarkdownFileWidgetConfigureActivity @Inject constructor() : Activity() {
         binding.addButton.setOnClickListener(onAddWidget)
         binding.btnBrowse.setOnClickListener(onBrowse)
         binding.radioDefaultApp.isSelected = true
-
 
         // Find the widget id from the intent.
         val intent = intent

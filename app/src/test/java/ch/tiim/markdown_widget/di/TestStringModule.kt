@@ -1,14 +1,13 @@
 package ch.tiim.markdown_widget.di
 
-import android.os.Environment
 import dagger.Module
 import dagger.Provides
 import javax.inject.Named
 
 @Module
-class StringModule : BaseModule<String>() {
+class TestStringModule : BaseModule<String>() {
 
     @Provides
     @Named("SUBFOLDER")
-    fun provideString() : String = Environment.DIRECTORY_DOCUMENTS
+    fun provideString() : String = "Dummy"
 }

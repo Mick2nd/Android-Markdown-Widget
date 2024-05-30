@@ -3,8 +3,6 @@ package ch.tiim.markdown_widget.di
 import android.net.Uri
 import ch.tiim.markdown_widget.MainActivity
 import ch.tiim.markdown_widget.MarkdownFileWidgetConfigureActivity
-import dagger.BindsInstance
-import dagger.Component
 import dagger.Subcomponent
 
 /**

@@ -1,23 +1,18 @@
 package ch.tiim.markdown_widget
 
-import android.content.Context
-import android.net.Uri
-import android.os.Environment
-import android.provider.DocumentsContract
 import android.util.Log
 import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.webkit.WebViewAssetLoader
-import androidx.webkit.WebViewAssetLoader.PathHandler
 import java.io.BufferedReader
-import java.io.File
-import java.io.FileInputStream
 import java.io.FileNotFoundException
 import java.io.InputStream
 import java.io.InputStreamReader
 
+private const val TAG = "Intercepted"
+private const val TAG2 = "Not Intercepted"
 
 /**
  * WebViewClient and WebViewClientCompat allowed as super class
@@ -39,20 +34,20 @@ open class LocalContentWebViewClient(private val assetLoader: WebViewAssetLoader
                     throw FileNotFoundException("${request.url}")
                 }
 
-                Log.d("Intercepted", "${request.url}")
-                Log.d("Intercepted", r.mimeType)
+                Log.d(TAG, "${request.url}")
+                Log.d(TAG, r.mimeType)
                 if (request.url.path == "/documents/userstyle.css") {
-                    Log.d("Intercepted", "User Style Probe: ${read(r.data!!)}")
+                    Log.d(TAG, "User Style Probe: ${read(r.data!!)}")
                 }
                 return r
             }
 
         } catch (err: Exception) {
-            Log.w("Intercepted", "Non existence of ${request.url.path} simply suppressed: $err", err)
+            Log.w(TAG, "Non existence of ${request.url.path} simply suppressed: $err")
             return null;
         }
 
-        Log.d("Not Intercepted", "${request.url}")
+        Log.d(TAG2, "${request.url}")
         return super.shouldInterceptRequest(view, request)
     }
 

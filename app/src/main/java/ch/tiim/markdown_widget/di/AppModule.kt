@@ -2,8 +2,9 @@ package ch.tiim.markdown_widget.di
 
 import android.content.Context
 import android.net.Uri
+import androidx.webkit.WebViewAssetLoader
+import ch.tiim.markdown_widget.ExternalStoragePathHandler
 import ch.tiim.markdown_widget.ExternalStoragePathHandlerAlt
-import ch.tiim.markdown_widget.ExternalStoragePathHandlerAltImpl
 import ch.tiim.markdown_widget.FileServices
 import ch.tiim.markdown_widget.Preferences
 import ch.tiim.markdown_widget.StoragePermissionChecker
@@ -20,7 +21,7 @@ private const val TAG = "DAGGER_LOG"
  * Provides all the Singleton instances for the MAIN COMPONENT
  */
 @Module(includes = [AppModule.Bindings::class])
-class AppModule {
+open class AppModule {
 
     @Provides
     @Singleton
@@ -30,15 +31,30 @@ class AppModule {
 
     @Provides
     @Singleton
-    fun providePreferences(context: Context) : Preferences {
+    open fun providePreferences(context: Context) : Preferences {
         return Preferences(context)
+    }
+
+    @Provides
+    @Singleton
+    @Named("EXTERNAL")
+    fun provideExternalStoragePathHandler(context: Context, @Named("SUBFOLDER") subFolder: String) : WebViewAssetLoader.PathHandler {
+        return ExternalStoragePathHandler(context, subFolder)
     }
 
     @Module
     interface Bindings {
+        /*
         @Binds
         @Singleton
-        fun provideExternalStoragePathHandler(impl: ExternalStoragePathHandlerAltImpl) : ExternalStoragePathHandlerAlt
+        @Named("EXTERNAL")
+        fun provideExternalStoragePathHandler(impl: ExternalStoragePathHandler) : WebViewAssetLoader.PathHandler
+        */
+
+        @Binds
+        @Singleton
+        @Named("GLOBAL")
+        fun provideExternalStoragePathHandlerAlt(impl: ExternalStoragePathHandlerAlt) : WebViewAssetLoader.PathHandler
 
         @Binds
         @Singleton

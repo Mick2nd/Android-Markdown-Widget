@@ -13,10 +13,14 @@ import ch.tiim.markdown_widget.di.AppComponent
 private const val DEBUG = true
 private const val TAG = "MainActivity"
 
+/**
+ * The main activity invoked when app is invoked.
+ */
 class MainActivity : AppCompatActivity() {
 
-    private lateinit var appComponent: AppComponent
-
+    /**
+     * [onCreate] Override.
+     */
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
@@ -27,8 +31,12 @@ class MainActivity : AppCompatActivity() {
         })
     }
 
+    /**
+     * [onStart] Override. Used to request access to an user selected global folder.
+     */
     override fun onStart() {
         super.onStart()
+
         // THIS PIECE OF CODE WORKS, INCLUDING THE INVOCATION OF THE CALLBACK
         with(AppComponent.instance) {
             storagePermissionChecker().requestAccess(this@MainActivity) {
@@ -37,6 +45,9 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    /**
+     * Displays a sample md page in Debug mode.
+     */
     private fun displayOnDebug() {
         if (DEBUG) {
             val testTxt = """

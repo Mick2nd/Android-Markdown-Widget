@@ -9,19 +9,16 @@ import android.app.Service
 import android.content.Context
 import android.content.Intent
 import android.graphics.Color
-import android.net.Uri
 import android.os.Build
 import android.os.FileObserver
 import android.os.IBinder
 import android.os.PowerManager
 import android.util.Log
 import android.widget.Toast
-import androidx.core.net.toFile
 import androidx.core.util.keyIterator
 import androidx.lifecycle.AndroidViewModel
 import ch.tiim.markdown_widget.di.AppComponent
-import java.io.File
-import java.net.URI
+import javax.inject.Inject
 
 private const val TAG = "UpdateService"
 private const val NOTIFICATION = 1
@@ -31,11 +28,13 @@ private const val NOTIFICATION = 1
  * This piece of code hosts an Observer for styles file changes.
  * Each change triggers a Markdown File Widget update.
  * TODO:
+ * - NOT WORKING FOR the current preferred userstyle.css location
  * - support versions before Q
  * - make observed file(s) path configurable
  */
 class UpdateService : Service() {
 
+    @Inject lateinit var prefs: Preferences
     private var wakeLock: PowerManager.WakeLock? = null
     private var isServiceStarted = false
     private var stylesObserver: FileObserver? = null
@@ -45,6 +44,7 @@ class UpdateService : Service() {
      */
     override fun onCreate() {
         super.onCreate()
+        AppComponent.instance.inject(this)                              // dependency injection
         Log.d(TAG, "The service has been created".uppercase())
         val notification = createNotification()
         startForeground(NOTIFICATION, notification)
@@ -114,7 +114,7 @@ class UpdateService : Service() {
                     it.release()
                 }
             }
-            stopForeground(true)
+            stopForeground(STOP_FOREGROUND_REMOVE)
             stopSelf()
         } catch (e: Exception) {
             Log.w(TAG, "Service stopped without being started: ${e.message}")

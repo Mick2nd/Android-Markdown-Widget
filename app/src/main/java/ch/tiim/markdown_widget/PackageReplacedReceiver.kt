@@ -19,6 +19,12 @@ private const val TAG = "PackageReplacedReceiver"
  */
 class PackageReplacedReceiver : BroadcastReceiver() {
 
+    /**
+     * onReceive override. Handles incoming broadcasts.
+     *
+     * @param context the context
+     * @param intent the intent of the broadcast
+     */
     override fun onReceive(context: Context?, intent: Intent?) {
 
         if (intent!!.action == ACTION_MY_PACKAGE_REPLACED) {

@@ -7,12 +7,18 @@ import ch.tiim.markdown_widget.di.AppComponent
 
 private const val TAG = "Main"
 
+/**
+ * Custom [Application] instance
+ */
 class Main : Application() {
     private lateinit var appComponent: AppComponent
 
+    /**
+     * Override. Instantiates the [appComponent].
+     */
     override fun onCreate() {
         super.onCreate()
-        appComponent = AppComponent.create(applicationContext, Environment.DIRECTORY_DOCUMENTS)
+        appComponent = AppComponent.create(this, applicationContext, Environment.DIRECTORY_DOCUMENTS)
         Log.i(TAG, "Application Main created")
     }
 
