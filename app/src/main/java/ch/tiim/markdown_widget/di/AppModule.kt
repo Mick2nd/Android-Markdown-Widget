@@ -15,6 +15,7 @@ import ch.tiim.markdown_widget.createStylesObserver
 import dagger.Binds
 import dagger.Module
 import dagger.Provides
+import dagger.hilt.migration.DisableInstallInCheck
 import javax.inject.Named
 import javax.inject.Singleton
 
@@ -24,6 +25,7 @@ private const val TAG = "DAGGER_LOG"
  * Provides all the Singleton instances for the MAIN COMPONENT
  */
 @Module(includes = [AppModule.Bindings::class])
+@DisableInstallInCheck
 open class AppModule {
 
     @Provides
@@ -44,6 +46,7 @@ open class AppModule {
     fun provideFileContentObserver2(context: Context, @Named("GLOBAL") uri: Uri) = createStylesObserver(context, uri)
 
     @Module
+    @DisableInstallInCheck
     interface Bindings {
 
         @Binds

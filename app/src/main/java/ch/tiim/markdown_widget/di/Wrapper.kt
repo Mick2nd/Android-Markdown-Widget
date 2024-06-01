@@ -2,6 +2,7 @@ package ch.tiim.markdown_widget.di
 
 import dagger.Module
 import dagger.Provides
+import dagger.hilt.migration.DisableInstallInCheck
 import kotlin.reflect.KProperty
 
 /**
@@ -23,6 +24,7 @@ class Wrapper<T>(private val injected: T) {
  * This helps to provide an implementation for the wrapped type
  */
 @Module
+@DisableInstallInCheck
 abstract class BaseModule<T> {
     @Provides
     fun provideWrapper(wrapped: T) : Wrapper<T> = Wrapper(wrapped)

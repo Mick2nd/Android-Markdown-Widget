@@ -5,10 +5,12 @@ import android.net.Uri
 import ch.tiim.markdown_widget.Preferences
 import dagger.Module
 import dagger.Provides
+import dagger.hilt.migration.DisableInstallInCheck
 import java.io.File
 import javax.inject.Named
 
 @Module
+@DisableInstallInCheck
 class UriModule {
 
     @Provides
