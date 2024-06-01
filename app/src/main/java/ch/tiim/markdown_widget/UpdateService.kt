@@ -15,10 +15,10 @@ import android.os.IBinder
 import android.os.PowerManager
 import android.util.Log
 import android.widget.Toast
-import androidx.core.util.keyIterator
 import androidx.lifecycle.AndroidViewModel
 import ch.tiim.markdown_widget.di.AppComponent
 import javax.inject.Inject
+import javax.inject.Named
 
 private const val TAG = "UpdateService"
 private const val NOTIFICATION = 1
@@ -35,6 +35,7 @@ private const val NOTIFICATION = 1
 class UpdateService : Service() {
 
     @Inject lateinit var prefs: Preferences
+    @Inject @Named("GLOBAL-2") lateinit var contentObserver: FileContentObserver
     private var wakeLock: PowerManager.WakeLock? = null
     private var isServiceStarted = false
     private var stylesObserver: FileObserver? = null
@@ -44,11 +45,11 @@ class UpdateService : Service() {
      */
     override fun onCreate() {
         super.onCreate()
-        AppComponent.instance.inject(this)                              // dependency injection
+        AppComponent.instance.inject(this)                                  // dependency injection
+        contentObserver.injectHandler { context -> sendUpdateRequest(context) }    // injects a handler
         Log.d(TAG, "The service has been created".uppercase())
         val notification = createNotification()
         startForeground(NOTIFICATION, notification)
-        stylesObserver = createStylesObserver(applicationContext)
     }
 
     /**
@@ -122,6 +123,14 @@ class UpdateService : Service() {
         isServiceStarted = false
     }
 
+    private fun sendUpdateRequest(context: Context) {
+        Log.i(TAG, "UserStyle.css updated")
+        for (appWidgetId in MarkdownFileWidget.appWidgetIds) {
+            val pendingIntent = getUpdatePendingIntent(context, appWidgetId)
+            pendingIntent.send()
+        }
+    }
+
     /**
      * Code from Web. Creates a notification channel for the foreground service.
      */
@@ -167,35 +176,6 @@ class UpdateService : Service() {
             .setPriority(Notification.PRIORITY_HIGH) // for under android 26 compatibility
             .build()
     }
-}
-
-/**
- * Does the real work: watching for file changes of the userstyle.css file and performing widget updates.
- * STATUS: NOT WORKING WITH FILES with content scheme, e.g. *userstyle.css* in Documents folder.
- */
-fun createStylesObserver(context: Context) : FileObserver {
-    fun getUserStyle() = AppComponent.instance.preferences().userDocumentUriOf("userstyle.css")
-
-    fun sendUpdateRequest(context: Context) {
-        Log.i(TAG, "UserStyle.css updated")
-        for (appWidgetId in MarkdownFileWidget.cachedMarkdown.keyIterator()) {
-            val pendingIntent = getUpdatePendingIntent(context, appWidgetId)
-            pendingIntent.send()
-        }
-    }
-
-    val o =
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q)
-            object : FileObserver(getUserStyle().toFile2(), MODIFY or CREATE) {
-                override fun onEvent(event: Int, path: String?) {
-                    sendUpdateRequest(context)
-                }
-            } else object : FileObserver(getUserStyle().toString(), MODIFY or CREATE) {
-                override fun onEvent(event: Int, path: String?) {
-                    sendUpdateRequest(context)
-                }
-            }
-    return o
 }
 
 /**

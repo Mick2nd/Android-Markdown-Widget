@@ -1,15 +1,17 @@
 package ch.tiim.markdown_widget.di
 
 import android.app.Application
-import android.appwidget.AppWidgetProvider
 import android.content.Context
+import android.net.Uri
 import androidx.webkit.WebViewAssetLoader
 import ch.tiim.markdown_widget.FileServices
+import ch.tiim.markdown_widget.Main
 import ch.tiim.markdown_widget.MarkdownFileWidget
 import ch.tiim.markdown_widget.MarkdownRenderer
 import ch.tiim.markdown_widget.Preferences
 import ch.tiim.markdown_widget.StoragePermissionChecker
 import ch.tiim.markdown_widget.UpdateService
+import ch.tiim.markdown_widget.FileContentObserver
 import dagger.BindsInstance
 import dagger.Component
 import javax.inject.Named
@@ -32,8 +34,8 @@ interface AppComponent {
          * @param type the folder type to be used as initial folder for permission request
          * @return the created (singleton) instance
          */
-        fun create(app: Application, context: Context, type: String) : AppComponent {
-            instance = DaggerAppComponent.factory().create(app, context, type)
+        fun create(app: Application, context: Context) : AppComponent {
+            instance = DaggerAppComponent.factory().create(app, context)
             return instance
         }
     }
@@ -55,7 +57,15 @@ interface AppComponent {
     @Singleton
     fun preferences() : Preferences
 
-    fun activityComponentFactory(): ActivityComponent.Factory
+    @Singleton
+    @Named("GLOBAL")
+    fun uri() : Uri
+
+    @Singleton
+    @Named("GLOBAL-1")
+    fun fileContentObserver() : FileContentObserver
+
+    fun activityComponentFactory() : ActivityComponent.Factory
 
     /**
      * Invocation in app widget did not work.
@@ -67,14 +77,12 @@ interface AppComponent {
 
     fun inject(service: UpdateService)
 
-    // fun inject(handler: WebViewAssetLoader.PathHandler)
-
-    // fun inject(checker: StoragePermissionChecker)
+    fun inject(main: Main)
 
     @Component.Factory
     @Singleton
     interface Factory {
         @Singleton
-        fun create(@BindsInstance app: Application, @BindsInstance context: Context, @BindsInstance type: String) : AppComponent
+        fun create(@BindsInstance app: Application, @BindsInstance context: Context) : AppComponent
     }
 }

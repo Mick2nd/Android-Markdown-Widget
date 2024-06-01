@@ -3,6 +3,7 @@ package ch.tiim.markdown_widget
 import android.app.PendingIntent
 import android.appwidget.AppWidgetManager
 import android.appwidget.AppWidgetProvider
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.res.Configuration.ORIENTATION_PORTRAIT
@@ -26,17 +27,25 @@ private const val TAG = "MarkdownFileWidget"
 class MarkdownFileWidget : AppWidgetProvider() {
     companion object {
         val cachedMarkdown: SparseArray<MarkdownRenderer> = SparseArray()
+        val appWidgetIds: IntArray
+            get() {
+                return manager?.getAppWidgetIds(ComponentName("ch.tiim.markdown_widget", "MarkdownFileWidget")) ?: intArrayOf()
+            }
+        private var manager: AppWidgetManager? = null
     }
 
     /**
      * Preferences injected in this central location.
      */
-    @Inject
-    lateinit var prefs: Preferences
+    @Inject lateinit var prefs: Preferences
+    @Inject lateinit var context: Context
 
+    /**
+     * Init block. Performs the injection.
+     */
     init {
         Log.d(TAG, "Here in init")
-        AppComponent.instance.inject(this)
+        AppComponent.instance.inject(this)                   // inject dependencies, here: Preferences
     }
 
     /**
@@ -51,6 +60,7 @@ class MarkdownFileWidget : AppWidgetProvider() {
         appWidgetIds: IntArray
     ) {
         Log.i(TAG, "onUpdate")
+        manager = appWidgetManager
         for (appWidgetId in appWidgetIds) {
             updateAppWidget(context, appWidgetManager, appWidgetId)
         }
@@ -71,8 +81,9 @@ class MarkdownFileWidget : AppWidgetProvider() {
         newOptions: Bundle?
     ) {
         Log.i(TAG, "onAppWidgetOptionsChanged: ${context.applicationContext}")
+        appWidgetManager?.let { manager = appWidgetManager }
         if (appWidgetManager != null) {
-            loadRenderer(context, appWidgetId, false) {
+            loadRenderer(context, appWidgetId, true) {
                 val md = cachedMarkdown[appWidgetId]
                 if (md == null) {
                     Log.e(TAG, "NO RENDERER TO UPDATE")
@@ -191,13 +202,13 @@ class MarkdownFileWidget : AppWidgetProvider() {
         if (md == null || (checkForChange && md.needsUpdate(s))) {
             val widgetSizeProvider = WidgetSizeProvider(context)
             val (width, height) = widgetSizeProvider.getScreenSize()
-            md = MarkdownRenderer(context, width / 2, height / 2, s, cb)
+            md = MarkdownRenderer(context, width, height, s, cb)
             cachedMarkdown.put(appWidgetId, md)
             Log.d(TAG, "New Renderer instance created ${md}")
         } else {
-            // NOT RELIABLE
-            // cb()
             md.refresh(cb)
+            // NOT RELIABLE? - SEEMS TO BE RELIABLE AND FASTER
+            // cb()
             Log.d(TAG, "Cached Renderer instance used ${md}")
         }
     }
@@ -274,14 +285,15 @@ class WidgetSizeProvider(
     /**
      * Returns the Dimensions of the Screen.
      *
-     * @return Dimensions in Density Points
+     * @return Dimensions in Pixels
      */
     fun getScreenSize() : Pair<Int, Int> {
         val displayMetrics = Resources.getSystem().displayMetrics
         val width = displayMetrics.widthPixels
         val height = displayMetrics.heightPixels
 
-        return width.dp.toInt() to height.dp.toInt()
+        return width to height
+        // return width.dp.toInt() to height.dp.toInt()
     }
 
     private val Number.dp: Float get() = this.toFloat() * Resources.getSystem().displayMetrics.density

@@ -38,7 +38,7 @@ class MarkdownRenderer(
     var webView: WebView? = null
 
     @Inject lateinit var fileChecker: FileServices
-    @Inject @Named("GLOBAL") lateinit var pathHandlerAlt:  WebViewAssetLoader.PathHandler
+    @Inject @Named("GLOBAL") lateinit var pathHandlerAlt: WebViewAssetLoader.PathHandler
     @Inject @Named("EXTERNAL") lateinit var pathHandler: WebViewAssetLoader.PathHandler
     private val theme = ""
     private var ready = false
@@ -87,10 +87,12 @@ class MarkdownRenderer(
         }
 
         Log.d(TAG, "Here in getBitmap")
+        val time = System.currentTimeMillis()
         val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bitmap)
         webView!!.draw(canvas)
-        Log.i(TAG, "$bitmap, execution in ${time}ms")
+        val duration = System.currentTimeMillis() - time
+        Log.i(TAG, "$bitmap, execution in ${duration}ms")
         return bitmap
     }
 

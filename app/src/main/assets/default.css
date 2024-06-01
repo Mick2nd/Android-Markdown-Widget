@@ -1,7 +1,7 @@
 .md_body {
     background: lightyellow;
-    transform: scale(0.7); 
-    transform-origin: 20% 0%;
+    transform: scale(0.7);
+    transform-origin: 33% 0%;
     height: 100%;
     width: auto;
 }
@@ -30,6 +30,9 @@ ul:has(.md_task_item) {
 }
 
 .mermaid {
+}
+
+.katex {
 }
 
 blockquote {

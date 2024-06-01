@@ -180,6 +180,8 @@ open class Preferences(private val context: Context) {
                 Log.d(TAG, "Decoded Folder Uri from app state: $uri")
                 return uri
             }
+            // TODO: should return null for dependent code to work
+            // does test code depend on this?
             return Uri.Builder().build()
         }
         set(value) {

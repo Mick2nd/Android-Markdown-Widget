@@ -15,8 +15,6 @@ import dagger.Subcomponent
 @ActivityScope
 interface ActivityComponent {
 
-    fun uri() : Uri
-
     fun inject(activity: MarkdownFileWidgetConfigureActivity)
 
     fun inject(activity: MainActivity)

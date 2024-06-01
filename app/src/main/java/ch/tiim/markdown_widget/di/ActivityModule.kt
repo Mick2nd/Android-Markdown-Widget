@@ -15,7 +15,4 @@ annotation class ActivityScope
  */
 @Module
 class ActivityModule() {
-    @Provides
-    @ActivityScope
-    fun providesUri(path : String) : Uri = Uri.parse(path)
 }

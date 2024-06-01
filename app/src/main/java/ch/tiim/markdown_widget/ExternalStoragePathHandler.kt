@@ -8,6 +8,7 @@ import androidx.webkit.WebViewAssetLoader
 import java.io.File
 import java.io.InputStream
 import javax.inject.Inject
+import javax.inject.Named
 import javax.inject.Singleton
 
 private const val TAG = "ExternalStoragePathHandler"
@@ -20,8 +21,8 @@ private const val TAG = "ExternalStoragePathHandler"
  */
 @Singleton
 class ExternalStoragePathHandler @Inject constructor(
-    val context: Context,
-    private val subFolder: String
+    private val context: Context,
+    @Named("SUBFOLDER") private val subFolder: String
     ) : WebViewAssetLoader.PathHandler {
 
     /**
@@ -49,8 +50,7 @@ class ExternalStoragePathHandler @Inject constructor(
  */
 @Singleton
 class ExternalStoragePathHandlerAlt @Inject constructor(
-    val context: Context,
-    val type: String,
+    private val context: Context,
     private val prefs: Preferences) : WebViewAssetLoader.PathHandler {
 
     /**

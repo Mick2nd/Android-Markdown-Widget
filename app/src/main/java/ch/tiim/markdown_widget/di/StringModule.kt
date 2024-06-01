@@ -6,7 +6,7 @@ import dagger.Provides
 import javax.inject.Named
 
 @Module
-class StringModule : BaseModule<String>() {
+class StringModule {
 
     @Provides
     @Named("SUBFOLDER")

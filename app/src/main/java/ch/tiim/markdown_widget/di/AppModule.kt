@@ -9,6 +9,9 @@ import ch.tiim.markdown_widget.FileServices
 import ch.tiim.markdown_widget.Preferences
 import ch.tiim.markdown_widget.StoragePermissionChecker
 import ch.tiim.markdown_widget.StoragePermissionCheckerImpl
+import ch.tiim.markdown_widget.FileContentObserver
+import ch.tiim.markdown_widget.FileContentObserverImpl
+import ch.tiim.markdown_widget.createStylesObserver
 import dagger.Binds
 import dagger.Module
 import dagger.Provides
@@ -37,19 +40,16 @@ open class AppModule {
 
     @Provides
     @Singleton
-    @Named("EXTERNAL")
-    fun provideExternalStoragePathHandler(context: Context, @Named("SUBFOLDER") subFolder: String) : WebViewAssetLoader.PathHandler {
-        return ExternalStoragePathHandler(context, subFolder)
-    }
+    @Named("GLOBAL-2")
+    fun provideFileContentObserver2(context: Context, @Named("GLOBAL") uri: Uri) = createStylesObserver(context, uri)
 
     @Module
     interface Bindings {
-        /*
+
         @Binds
         @Singleton
         @Named("EXTERNAL")
         fun provideExternalStoragePathHandler(impl: ExternalStoragePathHandler) : WebViewAssetLoader.PathHandler
-        */
 
         @Binds
         @Singleton
@@ -59,5 +59,10 @@ open class AppModule {
         @Binds
         @Singleton
         fun provideStoragePermissionChecker(impl: StoragePermissionCheckerImpl) : StoragePermissionChecker
+
+        @Binds
+        @Singleton
+        @Named("GLOBAL-1")
+        fun provideFileContentObserver1(impl: FileContentObserverImpl) : FileContentObserver
     }
  }

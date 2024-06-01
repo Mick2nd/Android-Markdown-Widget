@@ -15,6 +15,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import javax.inject.Named
 import javax.inject.Singleton
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
@@ -24,8 +25,8 @@ private const val TAG = "StoragePermissionChecker"
 
 @Singleton
 class StoragePermissionCheckerImpl @Inject constructor(
-    val context: Context,
-    val type: String,
+    private val context: Context,
+    @Named("SUBFOLDER") private val type: String,
     private val prefs: Preferences) : StoragePermissionChecker {
 
     /**

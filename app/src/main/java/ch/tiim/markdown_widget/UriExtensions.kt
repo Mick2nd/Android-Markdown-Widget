@@ -7,6 +7,7 @@ import android.net.Uri
 import android.provider.OpenableColumns
 import android.util.Log
 import androidx.core.net.toFile
+import androidx.core.net.toUri
 import java.io.File
 import java.io.FileNotFoundException
 
@@ -82,10 +83,10 @@ fun Uri.toFile2() : File {
     path?.let {
         val idx = it.lastIndexOf("primary:")
         if (idx >= 0) {
-            val documentPath = it.substring(idx).replace("primary:", "")
-            val fileSystemPath = it.substring(idx).replace("primary:", "/storage/self/primary/")
+            val documentPath = it.substring(idx).replace("primary:", "///")
+            val fileSystemPath = it.substring(idx).replace("primary:", "///mnt/sdcard/")
             val uri = Uri.Builder().scheme("file").path(fileSystemPath).build()
-            Log.d(TAG, fileSystemPath)
+            Log.d(TAG, "${uri}, ${uri.toFile()}")
             return uri.toFile()
         }
     }
