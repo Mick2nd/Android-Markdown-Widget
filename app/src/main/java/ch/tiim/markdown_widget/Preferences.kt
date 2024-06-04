@@ -1,10 +1,12 @@
 package ch.tiim.markdown_widget
 
 import android.content.Context
+import android.content.Intent
 import android.net.Uri
 import android.provider.DocumentsContract
 import android.provider.OpenableColumns
 import android.util.Log
+import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.FileNotFoundException
 
 internal const val PREF_FILE = "filepath"
@@ -22,7 +24,7 @@ private const val TAG = "Preferences"
  * - global: application wide setting
  * - individual: setting related to given app widget (by its id)
  */
-open class Preferences(private val context: Context) {
+open class Preferences(@ApplicationContext private val context: Context) {
 
     private val cache = HashMap<String, String>()
 
@@ -182,7 +184,7 @@ open class Preferences(private val context: Context) {
             }
             // TODO: should return null for dependent code to work
             // does test code depend on this?
-            return Uri.Builder().build()
+            return null // Uri.Builder().build()
         }
         set(value) {
             if (value == null)
@@ -195,6 +197,12 @@ open class Preferences(private val context: Context) {
      * Revokes the folder permission thus forcing a new request on next restart
      */
     fun revokeUserFolderPermission() {
+        try {
+            userFolderUri?.let {
+                context.contentResolver.releasePersistableUriPermission(it, Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            }
+        }
+        catch(err: Exception) { }
         delete(ENCODED_FOLDER_URI)
     }
 

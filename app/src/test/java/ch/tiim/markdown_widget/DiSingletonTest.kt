@@ -1,93 +1,62 @@
 package ch.tiim.markdown_widget
 
-import android.app.Application
-import android.content.ContentResolver
-import android.content.Context
-import android.content.SharedPreferences
 import android.net.Uri
-import android.provider.DocumentsContract
-import android.util.Log
-import ch.tiim.markdown_widget.di.DaggerTestAppComponent
-import ch.tiim.markdown_widget.di.TestAppComponent
+import dagger.hilt.android.testing.HiltAndroidRule
+import dagger.hilt.android.testing.HiltAndroidTest
+import dagger.hilt.android.testing.HiltTestApplication
 import org.junit.After
 import org.junit.Test
 import org.junit.Assert.*
 import org.junit.Before
-import org.junit.BeforeClass
+import org.junit.Rule
 import org.junit.runner.RunWith
-import org.mockito.ArgumentMatchers.any
-import org.mockito.ArgumentMatchers.anyString
-import org.mockito.MockedStatic
-import org.mockito.Mockito.mock
-import org.mockito.Mockito.mockStatic
-import org.mockito.Mockito.`when`
-import org.mockito.junit.MockitoJUnitRunner
+import org.mockito.MockitoAnnotations
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
+import javax.inject.Inject
+import javax.inject.Named
 
 /**
- * Test of the Singleton properties of components
- * - Factory of AppComponent delivers a new instance after each call
+ * Test of the Singleton properties of components.
  * - preferences provides real Singleton
  */
-@RunWith(MockitoJUnitRunner::class)
+@HiltAndroidTest
+@Config(application = HiltTestApplication::class)
+@RunWith(RobolectricTestRunner::class)
 class DiSingletonTest {
 
-    private lateinit var app: Application
-    private lateinit var context: Context
-    private lateinit var sharedPreferences: SharedPreferences
-    private lateinit var contentResolver: ContentResolver
-    private lateinit var appComponent: TestAppComponent
-    private lateinit var factory: TestAppComponent.Factory
-    private lateinit var type: String
+    @get:Rule(order = 0) val hiltRule = HiltAndroidRule(this)
 
-    companion object {
-        private lateinit var log: MockedStatic<Log>
-        private lateinit var mockedUri: MockedStatic<Uri>
-        private lateinit var uri: Uri
-        private lateinit var documentsContract: MockedStatic<DocumentsContract>
-
-        @JvmStatic
-        @BeforeClass
-        fun setupClass(): Unit {
-
-            log = mockStatic(Log::class.java)
-            mockedUri = mockStatic(Uri::class.java)
-            uri = mock(Uri::class.java)
-            documentsContract = mockStatic(DocumentsContract::class.java)
-            `when` ( Uri.parse(anyString()) ).thenReturn(uri)
-            `when` ( DocumentsContract.getTreeDocumentId(any()) ).thenReturn("")
-        }
-    }
+    @Inject lateinit var prefs1: Preferences
+    @Inject lateinit var prefs2: Preferences
+    @Inject lateinit var pathHandler1: ExternalStoragePathHandler
+    @Inject lateinit var pathHandler2: ExternalStoragePathHandler
+    @Inject lateinit var permissionChecker1: StoragePermissionChecker
+    @Inject lateinit var permissionChecker2: StoragePermissionChecker
+    @Inject lateinit var fileServices1: FileServices
+    @Inject lateinit var fileServices2: FileServices
+    @Inject @Named("GLOBAL") lateinit var uri1: Uri
+    @Inject @Named("GLOBAL") lateinit var uri2: Uri
 
     @Before
     fun setup() {
-
-        app = mock(Application::class.java)
-        context = mock(Context::class.java)
-        type = ""
-        sharedPreferences = mock(SharedPreferences::class.java)
-        contentResolver = mock(ContentResolver::class.java)
-        factory = DaggerTestAppComponent.factory()
-        appComponent = factory.create(app, context, type)
-    }
-
-    @Test
-    fun appComponentSingleton_Ok() {
-        assertNotEquals(factory.create(app, context, type), factory.create(app, context, type))
+        MockitoAnnotations.openMocks(this)
+        hiltRule.inject()
     }
 
     @Test
     fun preferencesSingleton_Ok() {
-        assertEquals(appComponent.preferences(), appComponent.preferences())
+        assertEquals(prefs1, prefs2)
     }
 
     @Test
     fun externalStoragePathHandlerSingleton_Ok() {
-        assertEquals(appComponent.externalStoragePathHandler(), appComponent.externalStoragePathHandler())
+        assertEquals(pathHandler1, pathHandler2)
     }
 
     @Test
     fun storagePermissionCheckerSingleton_Ok() {
-        assertEquals(appComponent.storagePermissionChecker(), appComponent.storagePermissionChecker())
+        assertEquals(permissionChecker1, permissionChecker2)
     }
 
     /**
@@ -96,11 +65,17 @@ class DiSingletonTest {
      */
     @Test
     fun fileCheckerSingleton_Ok() {
-        assertEquals(appComponent.fileChecker(), appComponent.fileChecker())
+        assertEquals(fileServices1, fileServices2)
+    }
+
+    @Test
+    fun uriNotSingleton_Ok() {
+        assertNotSame(uri1, uri2)
+        assertEquals(uri1, uri2)
     }
 
     @After
     fun teardown() {
-        log.reset()
+        // log.reset()
     }
 }

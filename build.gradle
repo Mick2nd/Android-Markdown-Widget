@@ -2,6 +2,7 @@
 buildscript {
     dependencies {
         classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:1.5.31"
+        classpath "com.google.dagger:hilt-android-gradle-plugin:$hiltAndroidVersion"
     }
 }
 
@@ -9,6 +10,7 @@ plugins {
     id 'com.android.application' version '8.3.2' apply false
     id 'com.android.library' version '8.3.2' apply false
     id 'org.jetbrains.kotlin.android' version '1.8.0' apply false
+    id 'com.google.dagger.hilt.android' version "$hiltAndroidVersion" apply false
     // id 'kotlin-kapt'
 }
 

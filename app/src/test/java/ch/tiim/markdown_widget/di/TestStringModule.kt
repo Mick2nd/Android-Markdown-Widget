@@ -2,10 +2,12 @@ package ch.tiim.markdown_widget.di
 
 import dagger.Module
 import dagger.Provides
+import dagger.hilt.migration.DisableInstallInCheck
 import javax.inject.Named
 
 @Module
-class TestStringModule : BaseModule<String>() {
+@DisableInstallInCheck
+class TestStringModule {
 
     @Provides
     @Named("SUBFOLDER")

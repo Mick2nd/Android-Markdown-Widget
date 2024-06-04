@@ -12,7 +12,8 @@ import android.webkit.WebView.RENDERER_PRIORITY_BOUND
 import androidx.webkit.WebViewAssetLoader
 import androidx.webkit.WebViewAssetLoader.AssetsPathHandler
 import androidx.webkit.WebViewAssetLoader.InternalStoragePathHandler
-import ch.tiim.markdown_widget.di.AppComponent
+import ch.tiim.markdown_widget.di.CustomEntryPoint
+import dagger.hilt.EntryPoints
 import java.io.File
 import javax.inject.Inject
 import javax.inject.Named
@@ -28,7 +29,7 @@ private const val TAG = "MarkdownRenderer"
  * @param data the md string to be rendered
  * @param onReady a callback to be invoked when [WebView] becomes ready
  */
-class MarkdownRenderer(
+class MarkdownRenderer @Inject constructor(
     private val context: Context,
     private val width: Int = 0,
     private val height: Int = 0,
@@ -49,7 +50,7 @@ class MarkdownRenderer(
      * Init block. Performs first time rendering. Responsible for DI per Dagger too.
      */
     init {
-        AppComponent.instance.inject(this)
+        EntryPoints.get(context.applicationContext, CustomEntryPoint::class.java).inject(this)
         time = System.currentTimeMillis()
 
         html = getHtml(data)
@@ -112,7 +113,7 @@ class MarkdownRenderer(
      *
      * @param html html to be rendered. This will be injected into the complete html document *index.html*
      */
-    private fun prepareWebView(
+    fun prepareWebView(
         html: String
     ) {
         time = System.currentTimeMillis()

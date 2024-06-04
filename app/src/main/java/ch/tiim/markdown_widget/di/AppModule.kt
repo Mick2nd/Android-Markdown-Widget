@@ -7,15 +7,19 @@ import ch.tiim.markdown_widget.ExternalStoragePathHandler
 import ch.tiim.markdown_widget.ExternalStoragePathHandlerAlt
 import ch.tiim.markdown_widget.FileServices
 import ch.tiim.markdown_widget.Preferences
-import ch.tiim.markdown_widget.StoragePermissionChecker
-import ch.tiim.markdown_widget.StoragePermissionCheckerImpl
 import ch.tiim.markdown_widget.FileContentObserver
 import ch.tiim.markdown_widget.FileContentObserverImpl
+import ch.tiim.markdown_widget.StoragePermissionChecker
+import ch.tiim.markdown_widget.StoragePermissionCheckerImpl
 import ch.tiim.markdown_widget.createStylesObserver
 import dagger.Binds
 import dagger.Module
 import dagger.Provides
-import dagger.hilt.migration.DisableInstallInCheck
+import dagger.android.support.AndroidSupportInjectionModule
+import dagger.hilt.InstallIn
+import dagger.hilt.android.qualifiers.ApplicationContext
+import dagger.hilt.android.scopes.ActivityScoped
+import dagger.hilt.components.SingletonComponent
 import javax.inject.Named
 import javax.inject.Singleton
 
@@ -24,30 +28,37 @@ private const val TAG = "DAGGER_LOG"
 /**
  * Provides all the Singleton instances for the MAIN COMPONENT
  */
-@Module(includes = [AppModule.Bindings::class])
-@DisableInstallInCheck
+@Module(includes = [
+    AppModule.Bindings::class,
+    AndroidSupportInjectionModule::class
+])
+@InstallIn(SingletonComponent::class)
 open class AppModule {
 
     @Provides
     @Singleton
-    fun provideFileChecker(context: Context, @Named("GLOBAL") uri: Uri) : FileServices {
+    fun provideFileChecker(@ApplicationContext context: Context, @Named("GLOBAL") uri: Uri) : FileServices {
         return FileServices(context, uri)
     }
 
     @Provides
     @Singleton
-    open fun providePreferences(context: Context) : Preferences {
+    open fun providePreferences(@ApplicationContext context: Context) : Preferences {
         return Preferences(context)
     }
 
     @Provides
     @Singleton
     @Named("GLOBAL-2")
-    fun provideFileContentObserver2(context: Context, @Named("GLOBAL") uri: Uri) = createStylesObserver(context, uri)
+    fun provideFileContentObserver2(@ApplicationContext context: Context, @Named("GLOBAL") uri: Uri) = createStylesObserver(context, uri)
 
     @Module
-    @DisableInstallInCheck
+    @InstallIn(SingletonComponent::class)
     interface Bindings {
+
+        @Binds
+        @Singleton
+        fun provideStoragePermissionChecker(impl: StoragePermissionCheckerImpl) : StoragePermissionChecker
 
         @Binds
         @Singleton
@@ -58,10 +69,6 @@ open class AppModule {
         @Singleton
         @Named("GLOBAL")
         fun provideExternalStoragePathHandlerAlt(impl: ExternalStoragePathHandlerAlt) : WebViewAssetLoader.PathHandler
-
-        @Binds
-        @Singleton
-        fun provideStoragePermissionChecker(impl: StoragePermissionCheckerImpl) : StoragePermissionChecker
 
         @Binds
         @Singleton

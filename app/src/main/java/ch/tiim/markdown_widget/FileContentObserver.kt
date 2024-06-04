@@ -8,6 +8,7 @@ import android.os.FileObserver
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
+import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Named
 
@@ -21,7 +22,7 @@ private const val TAG = "FileContentObserver"
  * @param context the context
  * @param uri the Uri of the file as injected by dagger
  */
-class FileContentObserverImpl @Inject constructor(val context: Context, @Named("GLOBAL") val uri: Uri) :
+class FileContentObserverImpl @Inject constructor(@ApplicationContext val context: Context, @Named("GLOBAL") val uri: Uri) :
     ContentObserver(Handler(Looper.getMainLooper())), FileContentObserver {
 
     private var handler: ((Context) -> Unit)? = null

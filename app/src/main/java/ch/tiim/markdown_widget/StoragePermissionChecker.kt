@@ -11,21 +11,16 @@ import android.util.Log
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
+import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Named
 import javax.inject.Singleton
-import kotlin.coroutines.resume
-import kotlin.coroutines.resumeWithException
-import kotlin.coroutines.suspendCoroutine
 
 private const val TAG = "StoragePermissionChecker"
 
 @Singleton
 class StoragePermissionCheckerImpl @Inject constructor(
-    private val context: Context,
+    @ApplicationContext private val context: Context,
     @Named("SUBFOLDER") private val type: String,
     private val prefs: Preferences) : StoragePermissionChecker {
 
@@ -37,58 +32,42 @@ class StoragePermissionCheckerImpl @Inject constructor(
      * @param activity sometimes it is necessary to have a reference to the client activity
      * @param onReady displays the Debug content. optional.
      */
-    override fun requestAccess(activity: AppCompatActivity, onReady: (folderUri: Uri) -> Unit) {
+    override fun requestAccess(activity: AppCompatActivity, onReady: () -> Unit) {
         prefs.userFolderUri?.let {
-            onReady(it)
+            onReady()
             return
         }
-        val job = CoroutineScope(Dispatchers.Main.immediate).launch {
-            suspendCoroutine<Boolean> { continuation ->
-                val resultLauncher = activity.registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
-                        result ->
-                    var resumed = false
-                    try {
-                        if (result.resultCode == Activity.RESULT_OK) {
-                            val data: Intent? = result.data
-                            data?.data?.also {
-                                try {
-                                    Log.i(TAG, "Request of OPEN_DOCUMENT_TREE succeeded: $it")
-                                    context.contentResolver.takePersistableUriPermission(it, Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                                    prefs.userFolderUri = it
-                                    resumed = true
-                                    onReady(it)
-
-                                    continuation.resume(true)
-                                } catch (err: Exception) {
-                                    Log.e(TAG, "$err")
-                                    resumed = true
-                                    continuation.resumeWithException(err)
-                                }
-                            }
-                        } else {
-                            Toast.makeText(context.applicationContext, "User Canceled Selection", Toast.LENGTH_LONG).show()
-                            Log.w(TAG, "Request of OPEN_DOCUMENT_TREE did not succeed: ${result.resultCode}")
+        val resultLauncher = activity.registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
+            result ->
+                if (result.resultCode == Activity.RESULT_OK) {
+                    val data: Intent? = result.data
+                    data?.data?.also {
+                        try {
+                            Log.i(TAG, "Request of OPEN_DOCUMENT_TREE succeeded: $it")
+                            context.contentResolver.takePersistableUriPermission(it, Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                            prefs.userFolderUri = it
+                            onReady()
+                        } catch (err: Exception) {
+                            Log.e(TAG, "$err")
                         }
                     }
-                    finally {
-                        if (!resumed) {
-                            continuation.resume(false)
-                        }
-                    }
+                } else {
+                    Toast.makeText(context.applicationContext, "User Canceled Selection", Toast.LENGTH_LONG).show()
+                    Log.w(TAG, "Request of OPEN_DOCUMENT_TREE did not succeed: ${result.resultCode}")
+                    onReady()
                 }
+        }
 
-                val file = Environment.getExternalStoragePublicDirectory(type)
-                val uri = Uri.fromFile(file)
-                val intent = Intent(Intent.ACTION_OPEN_DOCUMENT_TREE).apply {
-                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                    addCategory(Intent.CATEGORY_DEFAULT)
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                        putExtra(DocumentsContract.EXTRA_INITIAL_URI, uri)
-                    }
-                }
-                resultLauncher.launch(intent)
+        val file = Environment.getExternalStoragePublicDirectory(type)
+        val uri = Uri.fromFile(file)
+        val intent = Intent(Intent.ACTION_OPEN_DOCUMENT_TREE).apply {
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            addCategory(Intent.CATEGORY_DEFAULT)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                putExtra(DocumentsContract.EXTRA_INITIAL_URI, uri)
             }
         }
+        resultLauncher.launch(intent)
     }
 }
 
@@ -97,6 +76,6 @@ class StoragePermissionCheckerImpl @Inject constructor(
  */
 interface StoragePermissionChecker {
 
-    fun requestAccess(activity: AppCompatActivity, onReady: (folderUri: Uri) -> Unit = { })
+    fun requestAccess(activity: AppCompatActivity, onReady: () -> Unit = { })
 
 }

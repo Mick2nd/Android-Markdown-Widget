@@ -16,7 +16,9 @@ import android.os.PowerManager
 import android.util.Log
 import android.widget.Toast
 import androidx.lifecycle.AndroidViewModel
-import ch.tiim.markdown_widget.di.AppComponent
+import ch.tiim.markdown_widget.di.CustomEntryPoint
+import dagger.hilt.EntryPoints
+import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 import javax.inject.Named
 
@@ -32,6 +34,7 @@ private const val NOTIFICATION = 1
  * - support versions before Q
  * - make observed file(s) path configurable
  */
+@AndroidEntryPoint
 class UpdateService : Service() {
 
     @Inject lateinit var prefs: Preferences
@@ -45,8 +48,7 @@ class UpdateService : Service() {
      */
     override fun onCreate() {
         super.onCreate()
-        AppComponent.instance.inject(this)                                  // dependency injection
-        contentObserver.injectHandler { context -> sendUpdateRequest(context) }    // injects a handler
+        contentObserver.injectHandler { context -> sendUpdateRequest(context) }                     // injects a handler
         Log.d(TAG, "The service has been created".uppercase())
         val notification = createNotification()
         startForeground(NOTIFICATION, notification)

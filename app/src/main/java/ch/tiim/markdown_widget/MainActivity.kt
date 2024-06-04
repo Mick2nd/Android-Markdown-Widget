@@ -6,9 +6,10 @@ import android.os.Bundle
 import android.util.Log
 import android.view.View
 import android.widget.Button
-import android.widget.LinearLayout
 import androidx.appcompat.app.AppCompatActivity
-import ch.tiim.markdown_widget.di.AppComponent
+import androidx.constraintlayout.widget.ConstraintLayout
+import dagger.hilt.android.AndroidEntryPoint
+import javax.inject.Inject
 
 private const val DEBUG = true
 private const val TAG = "MainActivity"
@@ -16,7 +17,11 @@ private const val TAG = "MainActivity"
 /**
  * The main activity invoked when app is invoked.
  */
+@AndroidEntryPoint
 class MainActivity : AppCompatActivity() {
+
+    @Inject lateinit var permissionChecker: StoragePermissionChecker
+    @Inject lateinit var prefs: Preferences
 
     /**
      * [onCreate] Override.
@@ -29,6 +34,14 @@ class MainActivity : AppCompatActivity() {
             val browserIntent = Intent(Intent.ACTION_VIEW, Uri.parse("https://www.buymeacoffee.com/Tiim"))
             startActivity(browserIntent)
         })
+
+        findViewById<Button>(R.id.revoke).setOnClickListener(View.OnClickListener {
+            prefs.revokeUserFolderPermission()
+        })
+
+        permissionChecker.requestAccess(this) {
+            displayOnDebug()
+        }
     }
 
     /**
@@ -36,13 +49,6 @@ class MainActivity : AppCompatActivity() {
      */
     override fun onStart() {
         super.onStart()
-
-        // THIS PIECE OF CODE WORKS, INCLUDING THE INVOCATION OF THE CALLBACK
-        with(AppComponent.instance) {
-            storagePermissionChecker().requestAccess(this@MainActivity) {
-                displayOnDebug()
-            }
-        }
     }
 
     /**
@@ -110,12 +116,14 @@ class MainActivity : AppCompatActivity() {
             """.trimIndent()
 
             Log.d("Test:", testTxt)
-            val debugLayout = findViewById<LinearLayout>(R.id.debugLayout)
+            val debugLayout = findViewById<ConstraintLayout>(R.id.debugLayout)
+            val windowManager = this.windowManager
+            val (width, height) = WidgetSizeProvider(this.baseContext).getScreenSize(windowManager)
             debugLayout.addView(
                 MarkdownRenderer(
                     applicationContext,
-                    debugLayout.measuredWidth,
-                    debugLayout.measuredHeight,
+                    width, // debugLayout.measuredWidth,
+                    height, // debugLayout.measuredHeight,
                     testTxt
                 ).webView
             )

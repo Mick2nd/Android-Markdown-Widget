@@ -1,20 +1,51 @@
 package ch.tiim.markdown_widget.di
 
 import android.content.Context
-import ch.tiim.markdown_widget.MockPreferences
+import android.net.Uri
+import ch.tiim.markdown_widget.FileServices
 import ch.tiim.markdown_widget.Preferences
+import ch.tiim.markdown_widget.createStylesObserver
+import ch.tiim.markdown_widget.fakes.FakePreferences
+import ch.tiim.markdown_widget.fakes.SpyPreferences
 import dagger.Module
 import dagger.Provides
+import dagger.hilt.android.qualifiers.ApplicationContext
+import dagger.hilt.migration.DisableInstallInCheck
 import javax.inject.Named
 import javax.inject.Singleton
 
-@Module
-open class TestAppModule : AppModule() {
+/**
+ * Currently not active.
+ */
+@Module(includes = [])
+@DisableInstallInCheck
+// @TestInstallIn(
+//    components = [SingletonComponent::class],
+//    replaces = [AppModule::class]
+// )
+open class TestAppModule {
+    @Provides
+    @Singleton
+    fun provideFileChecker(@ApplicationContext context: Context, @Named("GLOBAL") uri: Uri) : FileServices {
+        return FileServices(context, uri)
+    }
+
+    @Provides
+    @Singleton
+    @Named("GLOBAL-2")
+    fun provideFileContentObserver2(@ApplicationContext context: Context, @Named("GLOBAL") uri: Uri) = createStylesObserver(context, uri)
 
     @Provides
     @Singleton
     @Named("MOCK")
-    fun provideMockPreferences(context: Context) : Preferences {
-        return MockPreferences(context)
+    fun provideMockPreferences(@ApplicationContext context: Context) : FakePreferences {
+        return FakePreferences(context)
+    }
+
+    @Provides
+    @Singleton
+    // @Named("SPY")
+    fun provideSpyPreferences(@ApplicationContext context: Context) : Preferences {
+        return SpyPreferences(context)
     }
 }

@@ -9,13 +9,15 @@ import android.content.Intent
 import android.content.res.Configuration.ORIENTATION_PORTRAIT
 import android.content.res.Resources
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
 import android.util.SparseArray
+import android.view.WindowManager
 import android.widget.RemoteViews
-import ch.tiim.markdown_widget.di.AppComponent
+import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 
 private const val TAG = "MarkdownFileWidget"
@@ -24,6 +26,7 @@ private const val TAG = "MarkdownFileWidget"
  * Implementation of App Widget functionality.
  * App Widget Configuration implemented in [MarkdownFileWidgetConfigureActivity]
  */
+@AndroidEntryPoint
 class MarkdownFileWidget : AppWidgetProvider() {
     companion object {
         val cachedMarkdown: SparseArray<MarkdownRenderer> = SparseArray()
@@ -38,14 +41,12 @@ class MarkdownFileWidget : AppWidgetProvider() {
      * Preferences injected in this central location.
      */
     @Inject lateinit var prefs: Preferences
-    @Inject lateinit var context: Context
 
     /**
      * Init block. Performs the injection.
      */
     init {
         Log.d(TAG, "Here in init")
-        AppComponent.instance.inject(this)                   // inject dependencies, here: Preferences
     }
 
     /**
@@ -287,13 +288,20 @@ class WidgetSizeProvider(
      *
      * @return Dimensions in Pixels
      */
-    fun getScreenSize() : Pair<Int, Int> {
-        val displayMetrics = Resources.getSystem().displayMetrics
-        val width = displayMetrics.widthPixels
-        val height = displayMetrics.heightPixels
+    fun getScreenSize(manager: WindowManager? = null) : Pair<Int, Int> {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && manager != null) {
+            val windowMetrics = manager.currentWindowMetrics
+            val width = windowMetrics.bounds.width()
+            val height = windowMetrics.bounds.height()
 
-        return width to height
-        // return width.dp.toInt() to height.dp.toInt()
+            return width to height
+        } else {
+            val displayMetrics = Resources.getSystem().displayMetrics
+            val width = displayMetrics.widthPixels
+            val height = displayMetrics.heightPixels
+
+            return width to height
+        }
     }
 
     private val Number.dp: Float get() = this.toFloat() * Resources.getSystem().displayMetrics.density

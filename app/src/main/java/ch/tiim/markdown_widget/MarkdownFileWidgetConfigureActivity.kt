@@ -1,6 +1,5 @@
 package ch.tiim.markdown_widget
 
-import android.app.Activity
 import android.appwidget.AppWidgetManager
 import android.content.Intent
 import android.net.Uri
@@ -9,8 +8,9 @@ import android.view.View
 import android.webkit.MimeTypeMap
 import android.widget.EditText
 import android.widget.RadioGroup
+import androidx.appcompat.app.AppCompatActivity
 import ch.tiim.markdown_widget.databinding.MarkdownFileWidgetConfigureBinding
-import ch.tiim.markdown_widget.di.AppComponent
+import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 
 internal const val TAP_BEHAVIOUR_NONE = "none"
@@ -22,7 +22,8 @@ private const val ACTIVITY_RESULT_BROWSE = 1
 /**
  * The configuration screen for the [MarkdownFileWidget] AppWidget.
  */
-class MarkdownFileWidgetConfigureActivity @Inject constructor() : Activity() {
+@AndroidEntryPoint
+class MarkdownFileWidgetConfigureActivity @Inject constructor() : AppCompatActivity() {
 
     @Inject lateinit var prefs: Preferences
 
@@ -55,7 +56,9 @@ class MarkdownFileWidgetConfigureActivity @Inject constructor() : Activity() {
     /**
      * [onActivityResult] override.
      */
+    @Suppress
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
         if( requestCode == ACTIVITY_RESULT_BROWSE && resultCode == RESULT_OK && data?.data != null) {
             val uri: Uri = data.data!!;
 
@@ -116,10 +119,6 @@ class MarkdownFileWidgetConfigureActivity @Inject constructor() : Activity() {
      */
     public override fun onCreate(icicle: Bundle?) {
         super.onCreate(icicle)
-
-        AppComponent.instance.activityComponentFactory()            // injects what needs to be injected, controlled by Dagger
-            .create()
-            .inject(this)
 
         // Set the result to CANCELED.  This will cause the widget host to cancel
         // out of the widget placement if the user presses the back button.

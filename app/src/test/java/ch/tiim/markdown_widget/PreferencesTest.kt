@@ -1,6 +1,7 @@
 package ch.tiim.markdown_widget
 
 import android.content.Context
+import ch.tiim.markdown_widget.fakes.FakePreferences
 import org.junit.After
 import org.junit.Assert.*
 import org.junit.Before
@@ -14,12 +15,12 @@ import org.mockito.junit.MockitoJUnitRunner
 class PreferencesTest {
 
     private lateinit var context: Context
-    private lateinit var prefs: MockPreferences
+    private lateinit var prefs: FakePreferences
 
     @Before
     fun setup() {
         context = Mockito.mock(Context::class.java)
-        prefs = MockPreferences(context)
+        prefs = FakePreferences(context)
     }
 
     @Test
