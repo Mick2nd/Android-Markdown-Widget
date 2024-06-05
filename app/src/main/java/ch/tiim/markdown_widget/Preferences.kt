@@ -12,6 +12,8 @@ import java.io.FileNotFoundException
 internal const val PREF_FILE = "filepath"
 internal const val PREF_BEHAVIOUR = "behaviour"
 internal const val ENCODED_FOLDER_URI = "encodedFolderUri"
+internal const val SCREEN_WIDTH = "ScreenWidth"
+internal const val SCREEN_HEIGHT = "ScreenHeight"
 
 internal const val PREF_PREFIX_KEY = "appwidget_"
 private const val PREFS_NAME = "ch.tiim.markdown_widget.MarkdownFileWidget"
@@ -219,18 +221,36 @@ open class Preferences(@ApplicationContext private val context: Context) {
         val cursor = context.contentResolver.query(
             treeUri,
             arrayOf(OpenableColumns.DISPLAY_NAME, DocumentsContract.Document.COLUMN_DOCUMENT_ID),
-            "${OpenableColumns.DISPLAY_NAME} = ?",
+            "${OpenableColumns.DISPLAY_NAME} LIKE ?",
             arrayOf(path),
-            null)
-        if (cursor != null && cursor.moveToNext()) {
-            val documentId = cursor.getString(1)
-            cursor.close()
-            return documentId
+            "ASC")
+        while (cursor != null && cursor.moveToNext()) {                                             // selection not working -> THIS SOLUTION
+            if (cursor.getString(0) == path) {
+                val documentId = cursor.getString(1)
+                cursor.close()
+                return documentId
+            }
         }
 
         cursor?.close()
         // return ""
         // NOT COMPATIBLE WITH MOCKITO
         throw FileNotFoundException("Document $path not found")
+    }
+
+    /**
+     * Test - outputs the column names.
+     */
+    private fun test(uri: Uri) {
+        val cursor = context.contentResolver.query(
+            uri,
+            null,
+            null,
+            null,
+            null)
+        for (name in cursor?.columnNames ?: arrayOf()) {
+            Log.d(TAG, name)
+        }
+        cursor?.close()
     }
 }

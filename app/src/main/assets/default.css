@@ -1,7 +1,5 @@
 .md_body {
     background: lightyellow;
-    transform: scale(0.7);
-    transform-origin: 33% 0%;
     height: 100%;
     width: auto;
 }

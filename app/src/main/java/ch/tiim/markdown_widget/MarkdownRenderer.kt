@@ -24,21 +24,18 @@ private const val TAG = "MarkdownRenderer"
  * Renders a given html string into a [WebView] and returns [Bitmap] copies of it.
  *
  * @param context the context
- * @param width the width
- * @param height the height
  * @param data the md string to be rendered
  * @param onReady a callback to be invoked when [WebView] becomes ready
  */
 class MarkdownRenderer @Inject constructor(
     private val context: Context,
-    private val width: Int = 0,
-    private val height: Int = 0,
     private val data: String,
     private var onReady: (() -> Unit) = {  }
 ) {
     var webView: WebView? = null
 
     @Inject lateinit var fileChecker: FileServices
+    @Inject lateinit var prefs: Preferences
     @Inject @Named("GLOBAL") lateinit var pathHandlerAlt: WebViewAssetLoader.PathHandler
     @Inject @Named("EXTERNAL") lateinit var pathHandler: WebViewAssetLoader.PathHandler
     private val theme = ""
@@ -167,9 +164,7 @@ class MarkdownRenderer @Inject constructor(
 
             it.clearHistory()
             it.clearCache(true)
-            val w = if (width != 0) width else 900
-            val h = if (height != 0) height else 1200
-            it.layout(0, 0, w, h)
+            it.layout(0, 0, prefs[SCREEN_WIDTH, "1000"].toInt(), prefs[SCREEN_HEIGHT, "1000"].toInt())
             it.addJavascriptInterface(JsObject(theme, html), "jsObject")
             it.loadUrl("https://appassets.androidplatform.net/assets/index.html")
             Log.i(TAG, "WebView instance created and Html loaded: $html")
@@ -193,7 +188,7 @@ class MarkdownRenderer @Inject constructor(
      * @property theme a theme string
      * @property html the html created from markdown
      */
-    class JsObject (val theme: String, val html: String)
+    class JsObject (val theme: String, val html: String, val zoom: Float = 0.7f)
     {
         /**
          * Used inside Js code to inject a theme string.
@@ -209,6 +204,14 @@ class MarkdownRenderer @Inject constructor(
         @JavascriptInterface
         fun injectHtml() : String {
             return html
+        }
+
+        /**
+         * In Js we can query for the rendered markdown to be injected into the html body.
+         */
+        @JavascriptInterface
+        fun injectZoom() : Float {
+            return zoom
         }
     }
 }

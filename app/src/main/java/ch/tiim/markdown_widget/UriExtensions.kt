@@ -7,7 +7,6 @@ import android.net.Uri
 import android.provider.OpenableColumns
 import android.util.Log
 import androidx.core.net.toFile
-import androidx.core.net.toUri
 import java.io.File
 import java.io.FileNotFoundException
 
@@ -69,7 +68,9 @@ fun Uri.toObsidian(context: Context) : Uri {
     if (result == null) {
         result = fileName()
     }
-    return Uri.parse("obsidian://open?file=${Uri.encode(result)}")
+    val obsidianUri = "obsidian://open?file=${Uri.encode(result)}"
+    Log.d(TAG, "Obsidian invocation with: $obsidianUri")
+    return Uri.parse(obsidianUri)
 }
 
 /**

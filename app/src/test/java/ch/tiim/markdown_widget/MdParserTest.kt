@@ -139,6 +139,24 @@ class MdParserTest {
                 </div>
                 """
             ),
+            // Math - Inline
+            arrayOf(
+                "Inline formula: $\u0060 \\Gamma(n) = (n-1)!\\quad\\forall n\\in\\mathbb N \u0060$ inside a paragraph",
+                """<p>Inline formula: <span class="katex">
+                 \Gamma(n) = (n-1)!\quad\forall n\in\mathbb N
+                </span> inside a paragraph</p>"""
+            ),
+            // Math - 2: experimental
+            arrayOf(
+                """
+                $$ \Gamma(n) = (n-1)!\quad\forall n\in\mathbb N $$
+                """.trimIndent(),
+                """
+                <div class="katex">
+                 \Gamma(n) = (n-1)!\quad\forall n\in\mathbb N
+                </div>
+                """
+            ),
             // Mermaid
             arrayOf(
                 """

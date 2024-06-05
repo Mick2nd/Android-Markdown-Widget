@@ -102,7 +102,7 @@
     </style>
     <title>Html Page</title>
 </head>
-<body class="md_body">
+<body id="md_body" class="md_body">
 <!-- PLACEHOLDER for rendered markdown -->
 <div id="markdown">
 </div>
@@ -113,6 +113,10 @@
         var md = document.getElementById("markdown");
         md.innerHTML = jsObject.injectHtml().replace("\\", "&bsol;");
         console.log("Inserted Markdown in Javascript: " + md.innerHTML);
+        var body = document.getElementById("md_body");
+        var zoom = jsObject.injectZoom();
+        body.style.transform = `scale(${zoom})`;
+        body.style.transformOrigin = `calc(0.1 / (1 - ${zoom}) * 100%) 0%`;
 
         renderKatex();
         renderMermaid();

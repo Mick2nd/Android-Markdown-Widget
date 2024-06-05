@@ -76,10 +76,27 @@ class MarkdownParser(private val theme:String) {
      */
     fun parse(md: String): String {
 
-        val document: Node = parser.parse(md)
+        val document: Node = parser.parse(preParse(md))
         val html = renderer.render(document)
 
         Log.d(TAG, "Rendered MD: $html")
         return html
+    }
+
+    /**
+     * Responsible for changing $$ separators of math formulae into math fences block.
+     * Attention! This is only a first trial. No inner structure of md is taken into account.
+     */
+    private fun preParse(md: String): String {
+        val parts = md.split("$$").toMutableList()
+        if (parts.count() % 2 == 0) {                                   // odd number of $$ not supported
+            return md
+        }
+        for ((idx, part) in parts.withIndex()) {
+            if (idx % 2 == 1) {
+                parts[idx] = "```math\n$part\n```"
+            }
+        }
+        return parts.joinToString(separator = "")
     }
 }

@@ -60,7 +60,7 @@ class MarkdownFileWidget : AppWidgetProvider() {
         appWidgetManager: AppWidgetManager,
         appWidgetIds: IntArray
     ) {
-        Log.i(TAG, "onUpdate")
+         Log.i(TAG, "onUpdate")
         manager = appWidgetManager
         for (appWidgetId in appWidgetIds) {
             updateAppWidget(context, appWidgetManager, appWidgetId)
@@ -201,9 +201,7 @@ class MarkdownFileWidget : AppWidgetProvider() {
         val s = FileServices(context, fileUri).content
         var md = cachedMarkdown[appWidgetId]
         if (md == null || (checkForChange && md.needsUpdate(s))) {
-            val widgetSizeProvider = WidgetSizeProvider(context)
-            val (width, height) = widgetSizeProvider.getScreenSize()
-            md = MarkdownRenderer(context, width, height, s, cb)
+            md = MarkdownRenderer(context, s, cb)
             cachedMarkdown.put(appWidgetId, md)
             Log.d(TAG, "New Renderer instance created ${md}")
         } else {
@@ -239,12 +237,14 @@ internal fun getUpdatePendingIntent(context: Context, appWidgetId: Int): Pending
 /**
  * Returns the Intent to be used to request the invocation of the Markdown editor.
  * Depends on the configured method during Widget creation.
+ * TODO: obsidian not reacting
  *
  * @param uri Uri of the file
  * @param tapBehavior configured Tap method
  * @return pending intent
  */
 fun getIntent(context: Context, uri: Uri, tapBehavior: String): PendingIntent {
+    Log.d(TAG, "tapBehavior is: $tapBehavior")
     val intent = Intent(Intent.ACTION_EDIT)
     if (tapBehavior == TAP_BEHAVIOUR_DEFAULT_APP) {
         intent.setDataAndType(uri.normalizeScheme(), "text/plain")
@@ -281,27 +281,6 @@ class WidgetSizeProvider(
 
         Log.d(TAG, "Device size: $width $height")
         return width to height
-    }
-
-    /**
-     * Returns the Dimensions of the Screen.
-     *
-     * @return Dimensions in Pixels
-     */
-    fun getScreenSize(manager: WindowManager? = null) : Pair<Int, Int> {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && manager != null) {
-            val windowMetrics = manager.currentWindowMetrics
-            val width = windowMetrics.bounds.width()
-            val height = windowMetrics.bounds.height()
-
-            return width to height
-        } else {
-            val displayMetrics = Resources.getSystem().displayMetrics
-            val width = displayMetrics.widthPixels
-            val height = displayMetrics.heightPixels
-
-            return width to height
-        }
     }
 
     private val Number.dp: Float get() = this.toFloat() * Resources.getSystem().displayMetrics.density

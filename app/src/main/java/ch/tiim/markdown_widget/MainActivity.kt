@@ -1,10 +1,13 @@
 package ch.tiim.markdown_widget
 
 import android.content.Intent
+import android.content.res.Resources
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.util.Log
 import android.view.View
+import android.view.WindowManager
 import android.widget.Button
 import androidx.appcompat.app.AppCompatActivity
 import androidx.constraintlayout.widget.ConstraintLayout
@@ -38,6 +41,10 @@ class MainActivity : AppCompatActivity() {
         findViewById<Button>(R.id.revoke).setOnClickListener(View.OnClickListener {
             prefs.revokeUserFolderPermission()
         })
+
+        val (width, height) = getScreenSize()                                                       // this "settings" are used globally for DEBUG view
+        prefs[SCREEN_WIDTH] = width.toString()                                                      // and all widgets
+        prefs[SCREEN_HEIGHT] = height.toString()
 
         permissionChecker.requestAccess(this) {
             displayOnDebug()
@@ -117,16 +124,34 @@ class MainActivity : AppCompatActivity() {
 
             Log.d("Test:", testTxt)
             val debugLayout = findViewById<ConstraintLayout>(R.id.debugLayout)
-            val windowManager = this.windowManager
-            val (width, height) = WidgetSizeProvider(this.baseContext).getScreenSize(windowManager)
             debugLayout.addView(
                 MarkdownRenderer(
                     applicationContext,
-                    width, // debugLayout.measuredWidth,
-                    height, // debugLayout.measuredHeight,
                     testTxt
                 ).webView
             )
+        }
+    }
+
+    /**
+     * Returns the Dimensions of the Screen. This is required for proper scaling of the WebView
+     * contents.
+     *
+     * @return Dimensions in Pixels
+     */
+    private fun getScreenSize() : Pair<Int, Int> {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            val windowMetrics = windowManager.currentWindowMetrics
+            val width = windowMetrics.bounds.width()
+            val height = windowMetrics.bounds.height()
+
+            return width to height
+        } else {
+            val displayMetrics = Resources.getSystem().displayMetrics
+            val width = displayMetrics.widthPixels
+            val height = displayMetrics.heightPixels
+
+            return width to height
         }
     }
 }
