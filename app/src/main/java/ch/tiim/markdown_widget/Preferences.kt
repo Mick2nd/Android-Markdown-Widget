@@ -15,7 +15,7 @@ internal const val ENCODED_FOLDER_URI = "encodedFolderUri"
 internal const val SCREEN_WIDTH = "ScreenWidth"
 internal const val SCREEN_HEIGHT = "ScreenHeight"
 
-internal const val PREF_PREFIX_KEY = "appwidget_"
+private const val PREF_PREFIX_KEY = "appwidget_"
 private const val PREFS_NAME = "ch.tiim.markdown_widget.MarkdownFileWidget"
 
 private const val TAG = "Preferences"
@@ -48,13 +48,14 @@ open class Preferences(@ApplicationContext private val context: Context) {
      * @return the read preference
      */
     open operator fun get(prefName: String, default: String) : String {
+        val internalPref = "$PREF_PREFIX_KEY$prefName"
         synchronized(this) {
-            if (prefName !in cache) {
+            if (internalPref !in cache) {
                 val prefs = context.getSharedPreferences(PREFS_NAME, 0)
-                val value = prefs.getString(prefName, default)
-                cache[prefName] = value ?: default
+                val value = prefs.getString(internalPref, default)
+                cache[internalPref] = value ?: default
             }
-            cache[prefName]?.let {
+            cache[internalPref]?.let {
                 return it
             }
             return ""
@@ -71,7 +72,7 @@ open class Preferences(@ApplicationContext private val context: Context) {
      * @return the read preference
      */
     operator fun get(appWidgetId: Int, prefName: String, default: String) : String {
-        return this["$PREF_PREFIX_KEY$appWidgetId--$prefName", default]
+        return this["$appWidgetId--$prefName", default]
     }
 
     /**
@@ -113,11 +114,12 @@ open class Preferences(@ApplicationContext private val context: Context) {
      * @param value the value to be written
      */
     open operator fun set(prefName: String, value: String) {
+        val internalPref = "$PREF_PREFIX_KEY$prefName"
         synchronized(this) {
-            if (prefName !in cache || cache[prefName] != value) {
-                cache[prefName] = value
+            if (internalPref !in cache || cache[internalPref] != value) {
+                cache[internalPref] = value
                 val prefs = context.getSharedPreferences(PREFS_NAME, 0).edit()
-                prefs.putString(prefName, value)
+                prefs.putString(internalPref, value)
                 prefs.apply()
             }
         }
@@ -131,7 +133,7 @@ open class Preferences(@ApplicationContext private val context: Context) {
      * @param value the value to be written
      */
     operator fun set(appWidgetId: Int, prefName: String, value: String) {
-        this["$PREF_PREFIX_KEY$appWidgetId--$prefName"] = value
+        this["$appWidgetId--$prefName"] = value
     }
 
     /**
@@ -151,10 +153,13 @@ open class Preferences(@ApplicationContext private val context: Context) {
      * @param prefName the global name
      */
     fun delete(prefName: String) {
-        val prefs = context.getSharedPreferences(PREFS_NAME, 0).edit()
-        prefs.remove(prefName)
-        cache.remove(prefName)
-        prefs.apply()
+        val internalPref = "$PREF_PREFIX_KEY$prefName"
+        synchronized(this) {
+            val prefs = context.getSharedPreferences(PREFS_NAME, 0).edit()
+            prefs.remove(internalPref)
+            cache.remove(internalPref)
+            prefs.apply()
+        }
     }
 
     /**
@@ -162,13 +167,10 @@ open class Preferences(@ApplicationContext private val context: Context) {
      * @param appWidgetId the id of the app widget
      */
     fun delete(appWidgetId: Int) {
-        val prefs = context.getSharedPreferences(PREFS_NAME, 0).edit()
-        val keys = listOf("$PREF_PREFIX_KEY$appWidgetId--$PREF_BEHAVIOUR", "$PREF_PREFIX_KEY$appWidgetId--$PREF_FILE")
+        val keys = listOf("$appWidgetId--$PREF_BEHAVIOUR", "$appWidgetId--$PREF_FILE")
         for (key in keys) {
-            prefs.remove(key)
-            cache.remove(key)
+            delete(key)
         }
-        prefs.apply()
     }
 
     /**
@@ -207,6 +209,32 @@ open class Preferences(@ApplicationContext private val context: Context) {
         catch(err: Exception) { }
         delete(ENCODED_FOLDER_URI)
     }
+
+    /**
+     * Builds and returns a list of all Shared Preferences by key.
+     */
+    fun keys(predicate: (String)->Boolean = { s -> true}) : List<String> {
+        val prefs = context.getSharedPreferences(PREFS_NAME, 0)
+        return prefs.all.keys.filter { s -> predicate(s) }.map { it.substring(PREF_PREFIX_KEY.length) }
+    }
+
+    /**
+     * Builds and returns a list of all Shared Preferences containing a Uri as key.
+     */
+    fun uris() =
+        keys()
+        .filter { it.contains("://") }
+        .map { Uri.parse(it) }
+
+    /**
+     * Builds and returns a list of all Shared Preferences containing a widgetId as key. (distinct
+     * ids only)
+     */
+    fun widgetIds() =
+        keys()
+        .filter { it.indexOf(PREF_PREFIX_KEY) == 0 && it[PREF_PREFIX_KEY.length].isDigit() }
+        .map { it.replace(Regex("(\\d+)[^0-9]"), "$1").toInt() }
+        .distinct()
 
     /**
      * This query has the task of providing a document id for a given display name

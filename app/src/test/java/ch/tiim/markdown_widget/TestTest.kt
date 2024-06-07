@@ -9,12 +9,11 @@ import org.junit.Assert.*
 import org.junit.Before
 import org.junit.Rule
 import org.junit.runner.RunWith
-import org.mockito.junit.MockitoJUnitRunner
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
 @HiltAndroidTest
-@Config(application = HiltTestApplication::class)
+@Config(application = HiltTestApplication::class, manifest=Config.NONE)
 @RunWith(RobolectricTestRunner::class)
 class TestTest {
 

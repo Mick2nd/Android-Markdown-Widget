@@ -7,8 +7,11 @@ import java.io.BufferedReader
 import java.io.FileNotFoundException
 import java.io.InputStream
 import java.io.InputStreamReader
+import java.net.HttpURLConnection
+import java.net.URL
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlin.concurrent.thread
 
 private const val TAG = "FileServices"
 
@@ -41,13 +44,24 @@ class FileServices @Inject constructor (private val context: Context, private va
         content = loadFile()
     }
 
+    /**
+     * Checks if state (content) has changed.
+     */
     val stateChanged
         get(): Boolean {
             return loadFile() != content
         }
 
+    /**
+     * Loads file from [Uri] and returns content. This may be a file from Internet, identified by
+     * the scheme property.
+     */
     private fun loadFile(): String {
         try {
+            if (uri.scheme in arrayOf("http", "https")) {
+                return URL(uri.toString()).getText()
+            }
+
             val ins: InputStream = context.contentResolver.openInputStream(uri)!!
             val reader = BufferedReader(InputStreamReader(ins, "utf-8"))
             val data = reader.lines().reduce { s, t -> s + "\n" + t }
@@ -65,5 +79,25 @@ class FileServices @Inject constructor (private val context: Context, private va
             return ""
         } finally {
         }
+    }
+
+    /**
+     * Loads an Internet page. Extension method of [URL]
+     */
+    private fun URL.getText(): String {
+
+        var text = ""
+        thread {
+            text = openConnection().run {
+                this as HttpURLConnection
+                val t = inputStream.bufferedReader().readText()
+                inputStream.bufferedReader().close()
+                inputStream.close()
+                disconnect()
+                Log.d(TAG, "HTTP(S) content loaded: $t")
+                t
+            }
+        }.join()
+        return text
     }
 }

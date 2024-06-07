@@ -21,7 +21,7 @@ import javax.inject.Named
  * - preferences provides real Singleton
  */
 @HiltAndroidTest
-@Config(application = HiltTestApplication::class)
+@Config(application = HiltTestApplication::class, manifest=Config.NONE)
 @RunWith(RobolectricTestRunner::class)
 class DiSingletonTest {
 

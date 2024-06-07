@@ -1,6 +1,13 @@
 package ch.tiim.markdown_widget
 
 import android.util.Log
+import cc.ekblad.konbini.ParserResult
+import cc.ekblad.konbini.many
+import cc.ekblad.konbini.oneOf
+import cc.ekblad.konbini.parseToEnd
+import cc.ekblad.konbini.parser
+import cc.ekblad.konbini.regex
+import cc.ekblad.konbini.string
 import com.vladsch.flexmark.ext.admonition.AdmonitionExtension
 import com.vladsch.flexmark.ext.gfm.strikethrough.StrikethroughExtension
 import com.vladsch.flexmark.ext.gfm.strikethrough.SubscriptExtension
@@ -17,7 +24,6 @@ import com.vladsch.flexmark.util.ast.Node
 import com.vladsch.flexmark.util.data.MutableDataSet
 import com.vladsch.flexmark.util.misc.Extension
 import org.jetbrains.annotations.NotNull
-import java.util.*
 
 private const val TAG = "MarkdownParser"
 
@@ -85,18 +91,42 @@ class MarkdownParser(private val theme:String) {
 
     /**
      * Responsible for changing $$ separators of math formulae into math fences block.
-     * Attention! This is only a first trial. No inner structure of md is taken into account.
      */
-    private fun preParse(md: String): String {
-        val parts = md.split("$$").toMutableList()
-        if (parts.count() % 2 == 0) {                                   // odd number of $$ not supported
-            return md
+    fun preParse(md: String): String {
+        val begin = """([^$\\]|\\.)+"""
+        val simple = parser { regex(begin) }
+        val simpleEndingWithoutNl = parser { regex("""$begin([^$\\\n]|\\.)""") }
+        val simpleEndingWithoutTick = parser { regex("""$begin([^$\\`]|\\.)""") }
+        val delimiter1 = string("$$")
+        val delimiter2 = string("$")
+        val nl = string("\n")
+        val tick = string("`")
+
+        val math = parser {
+            delimiter1()
+            many(nl)
+            val math = simpleEndingWithoutNl()     // simple is greedy -> consuming nl at the end
+            many(nl)
+            delimiter1()
+            "```math\n$math\n```"
         }
-        for ((idx, part) in parts.withIndex()) {
-            if (idx % 2 == 1) {
-                parts[idx] = "```math\n$part\n```"
-            }
+        val inlineMath = parser {
+            delimiter2()
+            many(tick)
+            val inlineMath = simpleEndingWithoutTick()
+            many(tick)
+            delimiter2()
+            "${'$'}`$inlineMath`$"
         }
-        return parts.joinToString(separator = "")
+        val part = oneOf(math, inlineMath, simple)
+        val grammar = parser {
+            many(part).joinToString("")
+        }
+        val result = grammar.parseToEnd(md, false)
+        if (result is ParserResult.Ok) {
+            return result.result
+        }
+        Log.w(TAG, "Pre-parsing markdown failed, markdown is left unchanged: $result")
+        return md
     }
 }

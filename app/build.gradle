@@ -65,6 +65,7 @@ kapt {
 }
 
 dependencies {
+    // implementation 'com.android.support:design:28.0.0'
     implementation 'androidx.core:core-ktx:1.13.1'
     implementation 'androidx.appcompat:appcompat:1.7.0'
     implementation 'com.google.android.material:material:1.12.0'
@@ -83,6 +84,7 @@ dependencies {
     kapt "com.google.dagger:dagger-compiler:$daggerVersion"
     implementation "com.google.dagger:hilt-android:$hiltAndroidVersion"
     kapt "com.google.dagger:hilt-compiler:$hiltAndroidVersion"
+    implementation("cc.ekblad.konbini:konbini:0.1.3")
 
     dokkaPlugin("org.jetbrains.dokka:android-documentation-plugin:$dokkaVersion")
 
@@ -96,6 +98,7 @@ dependencies {
     testImplementation "org.robolectric:robolectric:$robolectricVersion"
     testImplementation "com.google.dagger:hilt-android-testing:$hiltAndroidVersion"
     kaptTest "com.google.dagger:hilt-compiler:$hiltAndroidVersion"
+    testImplementation("cc.ekblad.konbini:konbini:0.1.3")
 
     // android integration tests
     androidTestImplementation 'androidx.test.ext:junit:1.1.5'

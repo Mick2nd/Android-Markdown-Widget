@@ -9,13 +9,11 @@ import android.content.Intent
 import android.content.res.Configuration.ORIENTATION_PORTRAIT
 import android.content.res.Resources
 import android.net.Uri
-import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
 import android.util.SparseArray
-import android.view.WindowManager
 import android.widget.RemoteViews
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
@@ -41,6 +39,7 @@ class MarkdownFileWidget : AppWidgetProvider() {
      * Preferences injected in this central location.
      */
     @Inject lateinit var prefs: Preferences
+    @Inject lateinit var contentCache: ContentCache
 
     /**
      * Init block. Performs the injection.
@@ -198,17 +197,17 @@ class MarkdownFileWidget : AppWidgetProvider() {
      */
     private fun loadRenderer(context: Context, appWidgetId: Int, checkForChange: Boolean, cb: (()->Unit)) {
         val fileUri = prefs.markdownUriOf(appWidgetId)
-        val s = FileServices(context, fileUri).content
+        val s = contentCache[fileUri] // FileServices(context, fileUri).content
         var md = cachedMarkdown[appWidgetId]
         if (md == null || (checkForChange && md.needsUpdate(s))) {
             md = MarkdownRenderer(context, s, cb)
             cachedMarkdown.put(appWidgetId, md)
-            Log.d(TAG, "New Renderer instance created ${md}")
+            Log.d(TAG, "New Renderer instance created ${md} from $fileUri: $s")
         } else {
             md.refresh(cb)
             // NOT RELIABLE? - SEEMS TO BE RELIABLE AND FASTER
             // cb()
-            Log.d(TAG, "Cached Renderer instance used ${md}")
+            Log.d(TAG, "Cached Renderer instance used ${md} from $fileUri: $s")
         }
     }
 }

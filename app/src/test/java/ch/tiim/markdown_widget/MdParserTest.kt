@@ -126,7 +126,7 @@ class MdParserTest {
                 </ul>
                 """
             ),
-            // Math
+            // Math - Block
             arrayOf(
                 """
                 ```math
@@ -141,12 +141,12 @@ class MdParserTest {
             ),
             // Math - Inline
             arrayOf(
-                "Inline formula: $\u0060 \\Gamma(n) = (n-1)!\\quad\\forall n\\in\\mathbb N \u0060$ inside a paragraph",
+                """Inline formula: ${'$'}` \Gamma(n) = (n-1)!\quad\forall n\in\mathbb N `$ inside a paragraph""",
                 """<p>Inline formula: <span class="katex">
                  \Gamma(n) = (n-1)!\quad\forall n\in\mathbb N
                 </span> inside a paragraph</p>"""
             ),
-            // Math - 2: experimental
+            // Math - Block - with transformation
             arrayOf(
                 """
                 $$ \Gamma(n) = (n-1)!\quad\forall n\in\mathbb N $$
@@ -156,6 +156,13 @@ class MdParserTest {
                  \Gamma(n) = (n-1)!\quad\forall n\in\mathbb N
                 </div>
                 """
+            ),
+            // Math - Inline - with transformation
+            arrayOf(
+                """Inline formula: ${'$'} \Gamma(n) = (n-1)!\quad\forall n\in\mathbb N $ inside a paragraph""",
+                """<p>Inline formula: <span class="katex">
+                 \Gamma(n) = (n-1)!\quad\forall n\in\mathbb N
+                </span> inside a paragraph</p>"""
             ),
             // Mermaid
             arrayOf(

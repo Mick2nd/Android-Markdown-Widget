@@ -3,6 +3,8 @@ package ch.tiim.markdown_widget.di
 import android.content.Context
 import android.net.Uri
 import androidx.webkit.WebViewAssetLoader
+import ch.tiim.markdown_widget.ContentCache
+import ch.tiim.markdown_widget.ContentCacheImpl
 import ch.tiim.markdown_widget.ExternalStoragePathHandler
 import ch.tiim.markdown_widget.ExternalStoragePathHandlerAlt
 import ch.tiim.markdown_widget.FileServices
@@ -74,5 +76,9 @@ open class AppModule {
         @Singleton
         @Named("GLOBAL-1")
         fun provideFileContentObserver1(impl: FileContentObserverImpl) : FileContentObserver
+
+        @Binds
+        @Singleton
+        fun provideContentCache(impl: ContentCacheImpl) :ContentCache
     }
  }
