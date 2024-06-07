@@ -3,14 +3,18 @@ package ch.tiim.markdown_widget
 import android.content.res.Resources
 import android.os.Build
 import android.os.Bundle
+import android.text.Editable
 import android.util.Log
 import androidx.fragment.app.Fragment
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
-import androidx.appcompat.app.AppCompatActivity
+import android.widget.CheckBox
+import android.widget.EditText
+import android.widget.Toast
 import androidx.constraintlayout.widget.ConstraintLayout
+import androidx.core.widget.doOnTextChanged
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 
@@ -30,6 +34,7 @@ private const val DEBUG = true
 class ConfigureFragment : Fragment() {
 
     @Inject lateinit var permissionChecker: StoragePermissionChecker
+    @Inject lateinit var contentCache: ContentCache
     @Inject lateinit var prefs: Preferences
 
     // TODO: Rename and change types of parameters
@@ -57,15 +62,38 @@ class ConfigureFragment : Fragment() {
 
         view.findViewById<Button>(R.id.revoke)?.setOnClickListener(View.OnClickListener {
             prefs.revokeUserFolderPermission()
+            Toast.makeText(view.context, "Permission for user folder revoked", Toast.LENGTH_SHORT).show()
         })
+
+        view.findViewById<Button>(R.id.refresh)?.setOnClickListener(View.OnClickListener {
+            contentCache.refresh()
+            for (appWidgetId in prefs.widgetIds()) {
+                getUpdatePendingIntent(view.context, appWidgetId).send()
+            }
+            Toast.makeText(view.context, "All widgets refreshed", Toast.LENGTH_SHORT).show()
+        })
+
+        view.findViewById<CheckBox>(R.id.useUserStyle)?.let {
+            it.isChecked = prefs.useUserStyle
+            it.setOnClickListener { _ ->
+                prefs.useUserStyle = it.isChecked
+                displayOnDebug()
+            }
+        }
+
+        view.findViewById<EditText>(R.id.zoom).let {
+            it.text = Editable.Factory.getInstance().newEditable((prefs.zoom * 100f).toInt().toString())
+            it.doOnTextChanged { text, _, _, _ ->
+                prefs.zoom = (text ?: "70").toString().toFloat() / 100f
+                displayOnDebug()
+            }
+        }
 
         val (width, height) = getScreenSize()                                                       // this "settings" are used globally for DEBUG view
         prefs[SCREEN_WIDTH] = width.toString()                                                      // and all widgets
         prefs[SCREEN_HEIGHT] = height.toString()
 
-        permissionChecker.requestAccess(activity as AppCompatActivity) {
-            displayOnDebug()
-        }
+        displayOnDebug()
     }
 
     /**

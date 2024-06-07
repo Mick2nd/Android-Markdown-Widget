@@ -33,6 +33,10 @@ class StoragePermissionCheckerImpl @Inject constructor(
      * @param onReady displays the Debug content. optional.
      */
     override fun requestAccess(activity: AppCompatActivity, onReady: () -> Unit) {
+        if (!prefs.useUserStyle) {
+            onReady()
+            return
+        }
         prefs.userFolderUri?.let {
             onReady()
             return

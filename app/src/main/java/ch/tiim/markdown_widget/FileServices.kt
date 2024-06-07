@@ -49,7 +49,10 @@ class FileServices @Inject constructor (private val context: Context, private va
      */
     val stateChanged
         get(): Boolean {
-            return loadFile() != content
+            val content = loadFile()
+            val result = content != this.content
+            this.content = content
+            return result
         }
 
     /**

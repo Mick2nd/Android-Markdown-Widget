@@ -9,6 +9,7 @@ import androidx.viewpager2.widget.ViewPager2
 import com.google.android.material.tabs.TabLayout
 import com.google.android.material.tabs.TabLayoutMediator
 import dagger.hilt.android.AndroidEntryPoint
+import javax.inject.Inject
 
 
 private const val TAG = "MainActivity"
@@ -18,6 +19,8 @@ private const val TAG = "MainActivity"
  */
 @AndroidEntryPoint
 class MainActivity : AppCompatActivity() {
+
+    @Inject lateinit var permissionChecker: StoragePermissionChecker
 
     /**
      * [onCreate] Override.
@@ -36,9 +39,14 @@ class MainActivity : AppCompatActivity() {
         TabLayoutMediator(tabLayout, viewPager) { tab, position ->
             tab.text = adapter.getTabTitle(position)
         }.attach()
+
+        permissionChecker.requestAccess(this)
     }
 
     class AdapterTabPager(activity: FragmentActivity?) : FragmentStateAdapter(activity!!) {
+
+        private val fragments = listOf(MainFragment(), ConfigureFragment())
+
         public fun getTabTitle(position : Int): String {
             return when (position) {
                 0 -> "Main"
@@ -51,10 +59,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         override fun createFragment(position: Int): Fragment {
-            return when (position) {
-                0 -> MainFragment()
-                else -> ConfigureFragment()
-            }
+            return fragments[position]
         }
     }
 }

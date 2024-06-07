@@ -13,4 +13,7 @@
     <string name="hello_blank_fragment">Hello blank fragment</string>
     <string name="tab_main">Main</string>
     <string name="tab_configure">Configure</string>
+    <string name="button_refresh">Refresh Widgets</string>
+    <string name="use_userstyle_css">Use userstyle.css</string>
+    <string name="zoom_factor">zoom factor in %</string>
 </resources>

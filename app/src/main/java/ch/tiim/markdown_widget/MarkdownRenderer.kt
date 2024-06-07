@@ -30,6 +30,7 @@ private const val TAG = "MarkdownRenderer"
 class MarkdownRenderer @Inject constructor(
     private val context: Context,
     private val data: String,
+    private val widthRatio: Float = 1.0f,
     private var onReady: (() -> Unit) = {  }
 ) {
     var webView: WebView? = null
@@ -101,8 +102,8 @@ class MarkdownRenderer @Inject constructor(
      * @param s a new md string
      * @return flag indicating whether an update is required
      */
-    fun needsUpdate(s: String) : Boolean {
-        return this.data != s || fileChecker.stateChanged
+    fun needsUpdate(s: String, widthRatio: Float) : Boolean {
+        return this.data != s || fileChecker.stateChanged || widthRatio != this.widthRatio
     }
 
     /**
@@ -165,7 +166,7 @@ class MarkdownRenderer @Inject constructor(
             it.clearHistory()
             it.clearCache(true)
             it.layout(0, 0, prefs[SCREEN_WIDTH, "1000"].toInt(), prefs[SCREEN_HEIGHT, "1000"].toInt())
-            it.addJavascriptInterface(JsObject(theme, html), "jsObject")
+            it.addJavascriptInterface(JsObject(theme, html, prefs.zoom, widthRatio), "jsObject")
             it.loadUrl("https://appassets.androidplatform.net/assets/index.html")
             Log.i(TAG, "WebView instance created and Html loaded: $html")
         }
@@ -187,8 +188,10 @@ class MarkdownRenderer @Inject constructor(
      *
      * @property theme a theme string
      * @property html the html created from markdown
+     * @property zoom the zoom factor to apply (scale transform of web page)
+     * @property widthRatio the width ratio to calculate the real width
      */
-    class JsObject (val theme: String, val html: String, val zoom: Float = 0.7f)
+    class JsObject (val theme: String, val html: String, val zoom: Float = 0.7f, val widthRatio: Float = 1.0f)
     {
         /**
          * Used inside Js code to inject a theme string.
@@ -207,11 +210,19 @@ class MarkdownRenderer @Inject constructor(
         }
 
         /**
-         * In Js we can query for the rendered markdown to be injected into the html body.
+         * In Js we can query for the zoom factor.
          */
         @JavascriptInterface
         fun injectZoom() : Float {
             return zoom
+        }
+
+        /**
+         * In Js we can query for the width ratio between widget width and screen width.
+         */
+        @JavascriptInterface
+        fun injectWidthRatio() : Float {
+            return widthRatio
         }
     }
 }

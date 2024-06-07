@@ -115,8 +115,11 @@
         console.log("Inserted Markdown in Javascript: " + md.innerHTML);
         var body = document.getElementById("md_body");
         var zoom = jsObject.injectZoom();
+        var margin = 0.05;
+        var widthRatio = jsObject.injectWidthRatio();
         body.style.transform = `scale(${zoom})`;
-        body.style.transformOrigin = `calc(0.1 / (1 - ${zoom}) * 100%) 0%`;
+        body.style.transformOrigin = `calc(${margin} / (1 - ${zoom}) * 100%) 0%`;
+        body.style.width = `calc((1 - 2 * ${margin}) / ${zoom} * ${widthRatio} * 100%)`;
 
         renderKatex();
         renderMermaid();

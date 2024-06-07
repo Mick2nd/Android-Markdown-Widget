@@ -8,6 +8,7 @@ import androidx.webkit.WebViewAssetLoader
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.File
 import java.io.InputStream
+import java.lang.Error
 import javax.inject.Inject
 import javax.inject.Named
 import javax.inject.Singleton
@@ -61,6 +62,9 @@ class ExternalStoragePathHandlerAlt @Inject constructor(
      */
     override fun handle(path: String): WebResourceResponse {
         try {
+            if (! prefs.useUserStyle && path == "userstyle.css") {
+                throw Exception("userstyle.css not enabled.")
+            }
             val stream = getInputStream(path)
             return WebResourceResponse("text/css", "utf-8", stream)
         } catch (err: Exception) {
@@ -71,7 +75,7 @@ class ExternalStoragePathHandlerAlt @Inject constructor(
     }
 
     /**
-     * Intentionally opens and returns an Input Stream
+     * Intentionally opens and returns an Input Stream.
      * @param path the filename of the document to open
      * @return the opened Input Stream
      */

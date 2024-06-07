@@ -197,6 +197,22 @@ open class Preferences(@ApplicationContext private val context: Context) {
             Log.d(TAG, "Stored encoded Folder Uri to app state")
         }
 
+    var useUserStyle : Boolean
+        get() {
+            return this["useUserStyle", "false"].toBoolean()
+        }
+        set(value) {
+            this["useUserStyle"] = "$value"
+        }
+
+    var zoom : Float
+        get() {
+            return this["zoom", "0.7"].toFloat()
+        }
+        set(value) {
+            this["zoom"] = "$value"
+        }
+
     /**
      * Revokes the folder permission thus forcing a new request on next restart
      */
@@ -232,8 +248,8 @@ open class Preferences(@ApplicationContext private val context: Context) {
      */
     fun widgetIds() =
         keys()
-        .filter { it.indexOf(PREF_PREFIX_KEY) == 0 && it[PREF_PREFIX_KEY.length].isDigit() }
-        .map { it.replace(Regex("(\\d+)[^0-9]"), "$1").toInt() }
+        .filter { it[0].isDigit() }
+        .map { it.replace(Regex("(\\d+)[^0-9].*"), "$1").toInt() }
         .distinct()
 
     /**

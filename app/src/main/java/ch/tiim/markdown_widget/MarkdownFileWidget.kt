@@ -198,9 +198,11 @@ class MarkdownFileWidget : AppWidgetProvider() {
     private fun loadRenderer(context: Context, appWidgetId: Int, checkForChange: Boolean, cb: (()->Unit)) {
         val fileUri = prefs.markdownUriOf(appWidgetId)
         val s = contentCache[fileUri] // FileServices(context, fileUri).content
+        val widgetSizeProvider = WidgetSizeProvider(context)
+        val widthRatio = widgetSizeProvider.getWidgetWidthRatio(appWidgetId, prefs)
         var md = cachedMarkdown[appWidgetId]
-        if (md == null || (checkForChange && md.needsUpdate(s))) {
-            md = MarkdownRenderer(context, s, cb)
+        if (md == null || (checkForChange && md.needsUpdate(s, widthRatio))) {
+            md = MarkdownRenderer(context, s, widthRatio, cb)
             cachedMarkdown.put(appWidgetId, md)
             Log.d(TAG, "New Renderer instance created ${md} from $fileUri: $s")
         } else {
@@ -219,7 +221,7 @@ class MarkdownFileWidget : AppWidgetProvider() {
  * @param appWidgetId the integer id of the app widget
  * @return intent of type [PendingIntent]
  */
-internal fun getUpdatePendingIntent(context: Context, appWidgetId: Int): PendingIntent {
+fun getUpdatePendingIntent(context: Context, appWidgetId: Int): PendingIntent {
     val intentUpdate = Intent(context, MarkdownFileWidget::class.java)
     intentUpdate.action = AppWidgetManager.ACTION_APPWIDGET_UPDATE
     val idArray = intArrayOf(appWidgetId)
@@ -257,7 +259,10 @@ fun getIntent(context: Context, uri: Uri, tapBehavior: String): PendingIntent {
 }
 
 /**
- * Extracts Dimensions of Widget or Screen in Density Points
+ * Extracts Dimensions of Widget in pixels. As a recherche in the Internet yielded, multiplication
+ * by *density* transforms dp into px,
+ * @see <a href="https://stackoverflow.com/questions/76087269/why-displaymetrics-density-is-wrong">
+ *     Stackoverflow</a> .
  */
 class WidgetSizeProvider(
     private val context: Context // Do not pass Application context
@@ -266,7 +271,7 @@ class WidgetSizeProvider(
      * Returns Dimensions of Widget as stored in the options.
      *
      * @param widgetId the id of the widget
-     * @return Dimensions in Density Points
+     * @return Dimensions in Pixels
      */
     fun getWidgetsSize(widgetId: Int): Pair<Int, Int> {
         val manager = AppWidgetManager.getInstance(context)
@@ -280,6 +285,24 @@ class WidgetSizeProvider(
 
         Log.d(TAG, "Device size: $width $height")
         return width to height
+    }
+
+    /**
+     * This method calculates the ratio between widget width and screen width. This is used to
+     * perform widget updates in the index.html javascript.
+     */
+    fun getWidgetWidthRatio(widgetId: Int, prefs: Preferences) : Float {
+        val manager = AppWidgetManager.getInstance(context)
+        val isPortrait = context.resources.configuration.orientation == ORIENTATION_PORTRAIT
+        val widthSetting =
+            if (isPortrait) AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH
+            else AppWidgetManager.OPTION_APPWIDGET_MAX_WIDTH
+
+        val width = manager.getAppWidgetOptions(widgetId).getInt(widthSetting, -1).toFloat()
+        val screenWidth = prefs[SCREEN_WIDTH, "1000"].toFloat()
+        val result = (if (width > 0) width / screenWidth  else 0.9f).dp
+        Log.d(TAG, "Calculated width ratio: $result, Screen width: $screenWidth")
+        return result
     }
 
     private val Number.dp: Float get() = this.toFloat() * Resources.getSystem().displayMetrics.density
