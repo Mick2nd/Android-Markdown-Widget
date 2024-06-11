@@ -7,8 +7,16 @@ import android.net.Uri
 import android.provider.OpenableColumns
 import android.util.Log
 import androidx.core.net.toFile
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.runBlocking
+import java.io.BufferedReader
 import java.io.File
 import java.io.FileNotFoundException
+import java.io.InputStream
+import java.io.InputStreamReader
+import java.net.HttpURLConnection
+import java.net.URL
 
 private const val TAG = "Uri Extensions"
 
@@ -92,4 +100,83 @@ fun Uri.toFile2() : File {
         }
     }
     throw FileNotFoundException("Uri not supported: $this")
+}
+
+/**
+ * Loads a text file given the [Uri]. The Uri must have one of the schemes *content*, *http*, *https*.
+ *
+ * @receiver Uri the uri
+ * @return the content to be returned
+ * @throws FileNotFoundException
+ * @throws IllegalArgumentException
+ */
+fun Uri.load(context: Context) : String {
+    if (scheme in arrayOf("http", "https")) {
+        return loadUrl()
+    }
+    return loadContent(context)
+}
+
+/**
+ * Loads a text file from the Internet using the http or https protocols.
+ *
+ * @receiver Uri the uri
+ * @return the content to be returned
+ * @throws FileNotFoundException
+ * @throws IllegalArgumentException
+ */
+fun Uri.loadUrl() : String {
+    if (scheme in arrayOf("http", "https")) {
+        val url = URL(toString())
+        return url.loadUrl()
+    }
+    throw IllegalArgumentException("Illegal scheme $scheme for loadUrl")
+}
+
+/**
+ * Loads a text file from the Internet using the http or https protocols.
+ *
+ * @receiver URL the url
+ * @return the content to be returned
+ * @throws FileNotFoundException
+ */
+fun URL.loadUrl() : String {
+        return runBlocking {
+            val job = async(Dispatchers.IO) {
+                openConnection().run {
+                    this as HttpURLConnection
+                    val text = inputStream.bufferedReader().readText()
+                    inputStream.bufferedReader().close()
+                    inputStream.close()
+                    disconnect()
+                    text
+                }
+            }
+            job.await()
+        }
+}
+
+/**
+ * Loads a text file from local file storage using the content scheme.
+ *
+ * @receiver Uri the uri
+ * @return the content to be returned
+ * @throws FileNotFoundException
+ * @throws IllegalArgumentException
+ */
+fun Uri.loadContent(context: Context) : String {
+    if (scheme in arrayOf("content")) {
+        val receiver = this
+        return runBlocking(Dispatchers.IO) {
+            async {
+                val ins: InputStream = context.contentResolver.openInputStream(receiver)!!
+                val reader = BufferedReader(InputStreamReader(ins, "utf-8"))
+                val text = reader.lines().reduce { s, t -> s + "\n" + t }
+                reader.close()
+                ins.close()
+                text.get()
+            } .await()
+        }
+    }
+    throw IllegalArgumentException("Illegal scheme $scheme for loadContent")
 }

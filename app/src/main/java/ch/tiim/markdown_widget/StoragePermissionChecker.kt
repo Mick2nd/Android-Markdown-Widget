@@ -62,17 +62,25 @@ class StoragePermissionCheckerImpl @Inject constructor(
                 }
         }
 
-        val file = Environment.getExternalStoragePublicDirectory(type)
-        val uri = Uri.fromFile(file)
-        val intent = Intent(Intent.ACTION_OPEN_DOCUMENT_TREE).apply {
-            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-            addCategory(Intent.CATEGORY_DEFAULT)
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                putExtra(DocumentsContract.EXTRA_INITIAL_URI, uri)
-            }
-        }
-        resultLauncher.launch(intent)
+        resultLauncher.launch(openDocumentTreeIntent)
     }
+
+    /**
+     * Returns the Intent for opening the document tree activity.
+     */
+    private val openDocumentTreeIntent: Intent
+        get() {
+            val file = Environment.getExternalStoragePublicDirectory(type)
+            val uri = Uri.fromFile(file)
+            val intent = Intent(Intent.ACTION_OPEN_DOCUMENT_TREE).apply {
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                addCategory(Intent.CATEGORY_DEFAULT)
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    putExtra(DocumentsContract.EXTRA_INITIAL_URI, uri)
+                }
+            }
+            return intent
+        }
 }
 
 /**

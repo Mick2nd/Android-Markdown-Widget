@@ -36,9 +36,9 @@ class ContentCacheImpl @Inject constructor(@ApplicationContext private val conte
      * Loads data string from original source.
      */
     override fun getNew(uri: Uri): String {
-        val fileServices = FileServices(context, uri)
-        this[uri] = fileServices.content
-        return fileServices.content
+        val text = uri.load(context)
+        this[uri] = text
+        return text
     }
 
     /**
@@ -63,6 +63,16 @@ class ContentCacheImpl @Inject constructor(@ApplicationContext private val conte
     override fun refresh() {
         for (uri in prefs.uris()) {
             getNew(uri)
+        }
+    }
+
+    /**
+     * Cleans the preferences from invalid Uris.
+     */
+    override fun clean() {
+        if (prefs.uris().isNotEmpty()) {
+            invalidateAll()
+            refresh()
         }
     }
 }
@@ -98,5 +108,10 @@ interface ContentCache {
      * Invalidates the cache and reloads the whole content.
      */
     fun refresh()
+
+    /**
+     * Cleans the preferences from invalid Uris.
+     */
+    fun clean()
 
 }

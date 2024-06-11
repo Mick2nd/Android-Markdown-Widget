@@ -29,7 +29,8 @@ ul:has(.md_task_item) {
 .mermaid {
 }
 
-.katex {
+span.katex {
+    font-size: 1.0em;
 }
 
 blockquote {

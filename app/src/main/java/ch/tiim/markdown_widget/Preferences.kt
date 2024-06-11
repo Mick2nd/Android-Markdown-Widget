@@ -7,6 +7,10 @@ import android.provider.DocumentsContract
 import android.provider.OpenableColumns
 import android.util.Log
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import java.io.FileNotFoundException
 
 internal const val PREF_FILE = "filepath"
@@ -43,6 +47,7 @@ open class Preferences(@ApplicationContext private val context: Context) {
 
     /**
      * Read "Global" preference
+     *
      * @param prefName the global preference name
      * @param default the default value
      * @return the read preference
@@ -51,9 +56,8 @@ open class Preferences(@ApplicationContext private val context: Context) {
         val internalPref = "$PREF_PREFIX_KEY$prefName"
         synchronized(this) {
             if (internalPref !in cache) {
-                val prefs = context.getSharedPreferences(PREFS_NAME, 0)
-                val value = prefs.getString(internalPref, default)
-                cache[internalPref] = value ?: default
+                val value = getString(internalPref, default)
+                cache[internalPref] = value
             }
             cache[internalPref]?.let {
                 return it
@@ -110,6 +114,7 @@ open class Preferences(@ApplicationContext private val context: Context) {
 
     /**
      * Write "Global" preference
+     *
      * @param prefName the global preference name
      * @param value the value to be written
      */
@@ -118,9 +123,7 @@ open class Preferences(@ApplicationContext private val context: Context) {
         synchronized(this) {
             if (internalPref !in cache || cache[internalPref] != value) {
                 cache[internalPref] = value
-                val prefs = context.getSharedPreferences(PREFS_NAME, 0).edit()
-                prefs.putString(internalPref, value)
-                prefs.apply()
+                putString(internalPref, value)
             }
         }
     }
@@ -128,6 +131,7 @@ open class Preferences(@ApplicationContext private val context: Context) {
     /**
      * Write preference individual for given appWidgetId
      * The global preference name will be calculated
+     *
      * @param appWidgetId the id of the app widget
      * @param prefName the "local" preference name
      * @param value the value to be written
@@ -146,29 +150,36 @@ open class Preferences(@ApplicationContext private val context: Context) {
         this[appWidgetId, PREF_FILE] = uri.toString()
     }
 
+    /**
+     * Same as [set] above.
+     */
     fun setMarkdownUri(appWidgetId: Int, uri: Uri) { this[appWidgetId] = uri }
 
     /**
-     * Deletes an individual global preference
+     * Deletes an individual global preference.
+     *
      * @param prefName the global name
      */
     fun delete(prefName: String) {
         val internalPref = "$PREF_PREFIX_KEY$prefName"
         synchronized(this) {
-            val prefs = context.getSharedPreferences(PREFS_NAME, 0).edit()
-            prefs.remove(internalPref)
+            remove(internalPref)
             cache.remove(internalPref)
-            prefs.apply()
         }
     }
 
     /**
-     * Deletes preferences used by an individual widget
+     * Deletes preferences used by an individual widget.
+     *
      * @param appWidgetId the id of the app widget
      */
     fun delete(appWidgetId: Int) {
         val keys = listOf("$appWidgetId--$PREF_BEHAVIOUR", "$appWidgetId--$PREF_FILE")
         for (key in keys) {
+            if (key.contains(PREF_FILE)) {
+                val uri = markdownUriOf(appWidgetId)
+                delete(uri.toString())
+            }
             delete(key)
         }
     }
@@ -176,7 +187,7 @@ open class Preferences(@ApplicationContext private val context: Context) {
     /**
      * User Folder Uri as getter / setter implementation.
      * This setting is backed by a cached Preference.
-     * Only one instance may exist for this mechanism to work.
+     * Only one instance of [Preferences] may exist for this mechanism to work.
      */
     var userFolderUri : Uri?
         get() {
@@ -197,6 +208,9 @@ open class Preferences(@ApplicationContext private val context: Context) {
             Log.d(TAG, "Stored encoded Folder Uri to app state")
         }
 
+    /**
+     * A setting indicating whether the *userstyle.css* file should be searched and used.
+     */
     var useUserStyle : Boolean
         get() {
             return this["useUserStyle", "false"].toBoolean()
@@ -205,6 +219,9 @@ open class Preferences(@ApplicationContext private val context: Context) {
             this["useUserStyle"] = "$value"
         }
 
+    /**
+     * The zoom setting to be applied to md content.
+     */
     var zoom : Float
         get() {
             return this["zoom", "0.7"].toFloat()
@@ -214,7 +231,7 @@ open class Preferences(@ApplicationContext private val context: Context) {
         }
 
     /**
-     * Revokes the folder permission thus forcing a new request on next restart
+     * Revokes the folder permission thus forcing a new request on next restart.
      */
     fun revokeUserFolderPermission() {
         try {
@@ -230,17 +247,28 @@ open class Preferences(@ApplicationContext private val context: Context) {
      * Builds and returns a list of all Shared Preferences by key.
      */
     fun keys(predicate: (String)->Boolean = { s -> true}) : List<String> {
-        val prefs = context.getSharedPreferences(PREFS_NAME, 0)
-        return prefs.all.keys.filter { s -> predicate(s) }.map { it.substring(PREF_PREFIX_KEY.length) }
+        return allKeys().filter { s -> predicate(s) }.map { it.substring(PREF_PREFIX_KEY.length) }
     }
 
     /**
-     * Builds and returns a list of all Shared Preferences containing a Uri as key.
+     * Builds and returns a list of all Shared Preferences containing the Uri(es) as key. If the
+     * cached content is empty, this relies on the widgets' preferences.
      */
-    fun uris() =
-        keys()
-        .filter { it.contains("://") }
-        .map { Uri.parse(it) }
+    fun uris() : List<Uri> {
+        val result = keys()
+            .filter { it.contains("://") }
+            .map { Uri.parse(it) }
+        if (result.isNotEmpty()) {
+            return result
+        }
+
+        return keys()
+            .filter { it.contains(PREF_FILE) }
+            .map {
+                val value = this[it, ""]
+                Uri.parse(value)
+            }
+    }
 
     /**
      * Builds and returns a list of all Shared Preferences containing a widgetId as key. (distinct
@@ -253,8 +281,9 @@ open class Preferences(@ApplicationContext private val context: Context) {
         .distinct()
 
     /**
-     * This query has the task of providing a document id for a given display name
-     * The file in question must exist in the folder with uri folderUri
+     * This query has the task of providing a document id for a given display name.
+     * The file in question must exist in the folder with uri folderUri.
+     *
      * @param path the display name of the file or file name
      * @return the document id
      * @throws FileNotFoundException
@@ -296,5 +325,60 @@ open class Preferences(@ApplicationContext private val context: Context) {
             Log.d(TAG, name)
         }
         cursor?.close()
+    }
+
+    /**
+     * Interface to Shared Preferences. Reads a string.
+     * All those methods work in an IO thread.
+     */
+    private fun getString(pref: String, default: String) : String {
+        return runBlocking(Dispatchers.IO) {
+            async {
+                val prefs = context.getSharedPreferences(PREFS_NAME, 0)
+                val value = prefs.getString(pref, default) ?: default
+                value
+            }.await()
+        }
+    }
+
+    /**
+     * Interface to Shared Preferences. Writes a string.
+     * All those methods work in an IO thread.
+     */
+    private fun putString(pref: String, value: String) {
+        runBlocking(Dispatchers.IO) {
+            launch {
+                val prefs = context.getSharedPreferences(PREFS_NAME, 0).edit()
+                prefs.putString(pref, value)
+                prefs.apply()
+            }
+        }
+    }
+
+    /**
+     * Interface to Shared Preferences. Removes an entry.
+     * All those methods work in an IO thread.
+     */
+    private fun remove(pref: String) {
+        runBlocking(Dispatchers.IO) {
+            launch {
+                val prefs = context.getSharedPreferences(PREFS_NAME, 0).edit()
+                prefs.remove(pref)
+                prefs.apply()
+            }
+        }
+    }
+
+    /**
+     * Interface to Shared Preferences. Returns the Key set.
+     * All those methods work in an IO thread.
+     */
+    private fun allKeys() : Set<String> {
+        return runBlocking(Dispatchers.IO) {
+            async {
+                val prefs = context.getSharedPreferences(PREFS_NAME, 0)
+                prefs.all.keys
+            }.await()
+        }
     }
 }

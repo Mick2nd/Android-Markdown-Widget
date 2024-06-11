@@ -48,22 +48,43 @@
         app:layout_constraintStart_toEndOf="@+id/revoke"
         app:layout_constraintTop_toTopOf="@+id/revoke" />
 
-    <EditText
-        android:id="@+id/zoom"
-        android:layout_width="0dp"
-        android:layout_height="48dp"
-        android:layout_marginTop="8dp"
-        android:ems="10"
-        android:hint="@string/zoom_factor"
-        android:inputType="numberDecimal"
-        app:layout_constraintEnd_toStartOf="@+id/guideline"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/useUserStyle" />
-
     <androidx.constraintlayout.widget.Guideline
         android:id="@+id/guideline"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:orientation="vertical"
         app:layout_constraintGuide_begin="201dp" />
+
+    <Spinner
+        android:id="@+id/zoom"
+        android:layout_width="wrap_content"
+        android:layout_height="48dp"
+        android:layout_marginTop="8dp"
+        app:layout_constraintEnd_toStartOf="@+id/guideline"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/revoke" />
+
+    <TextView
+        android:id="@+id/textView2"
+        android:layout_width="wrap_content"
+        android:layout_height="48dp"
+        android:layout_marginStart="8dp"
+        android:layout_marginTop="8dp"
+        android:labelFor="@id/zoom"
+        android:paddingTop="15dp"
+        android:text="%"
+        android:textAlignment="center"
+        app:layout_constraintStart_toEndOf="@+id/zoom"
+        app:layout_constraintTop_toBottomOf="@+id/revoke" />
+
+    <TextView
+        android:id="@+id/textView3"
+        android:layout_width="wrap_content"
+        android:layout_height="48dp"
+        android:layout_marginTop="8dp"
+        android:layout_marginEnd="8dp"
+        android:paddingTop="15dp"
+        android:text="Zoom"
+        app:layout_constraintEnd_toStartOf="@+id/zoom"
+        app:layout_constraintTop_toBottomOf="@+id/revoke" />
 </androidx.constraintlayout.widget.ConstraintLayout>

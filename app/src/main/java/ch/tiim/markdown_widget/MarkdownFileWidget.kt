@@ -3,7 +3,6 @@ package ch.tiim.markdown_widget
 import android.app.PendingIntent
 import android.appwidget.AppWidgetManager
 import android.appwidget.AppWidgetProvider
-import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.res.Configuration.ORIENTATION_PORTRAIT
@@ -15,6 +14,7 @@ import android.os.Looper
 import android.util.Log
 import android.util.SparseArray
 import android.widget.RemoteViews
+import android.widget.Toast
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 
@@ -28,11 +28,6 @@ private const val TAG = "MarkdownFileWidget"
 class MarkdownFileWidget : AppWidgetProvider() {
     companion object {
         val cachedMarkdown: SparseArray<MarkdownRenderer> = SparseArray()
-        val appWidgetIds: IntArray
-            get() {
-                return manager?.getAppWidgetIds(ComponentName("ch.tiim.markdown_widget", "MarkdownFileWidget")) ?: intArrayOf()
-            }
-        private var manager: AppWidgetManager? = null
     }
 
     /**
@@ -60,7 +55,6 @@ class MarkdownFileWidget : AppWidgetProvider() {
         appWidgetIds: IntArray
     ) {
          Log.i(TAG, "onUpdate")
-        manager = appWidgetManager
         for (appWidgetId in appWidgetIds) {
             updateAppWidget(context, appWidgetManager, appWidgetId)
         }
@@ -81,24 +75,10 @@ class MarkdownFileWidget : AppWidgetProvider() {
         newOptions: Bundle?
     ) {
         Log.i(TAG, "onAppWidgetOptionsChanged: ${context.applicationContext}")
-        appWidgetManager?.let { manager = appWidgetManager }
         if (appWidgetManager != null) {
             loadRenderer(context, appWidgetId, true) {
-                val md = cachedMarkdown[appWidgetId]
-                if (md == null) {
-                    Log.e(TAG, "NO RENDERER TO UPDATE")
-                    return@loadRenderer
-                }
-                val size = WidgetSizeProvider(context)
-                val (width, height) = size.getWidgetsSize(appWidgetId)
-                val views = RemoteViews(context.packageName, R.layout.markdown_file_widget)
-                val handler = Handler(Looper.getMainLooper())
-                handler.post {
-                    val bitmap = md.getBitmap(width, height)
-                    views.setImageViewBitmap(R.id.renderImg, bitmap)
-                    appWidgetManager.updateAppWidget(appWidgetId, views)
-                    Log.d(TAG, "Update after Options Changed")
-                }
+                loadRendererCb(context, appWidgetManager, appWidgetId)
+                Log.d(TAG, "Update after Options Changed")
             }
         }
     }
@@ -156,33 +136,20 @@ class MarkdownFileWidget : AppWidgetProvider() {
         appWidgetManager: AppWidgetManager,
         appWidgetId: Int
     ) {
+        val views = RemoteViews(context.packageName, R.layout.markdown_file_widget)
+        val fileUri = prefs.markdownUriOf(appWidgetId)
+        val tapBehavior = prefs[appWidgetId, PREF_BEHAVIOUR, TAP_BEHAVIOUR_DEFAULT_APP]
+        if (tapBehavior != TAP_BEHAVIOUR_NONE) {
+            views.setOnClickPendingIntent(
+                R.id.renderImg,
+                getIntent(context, fileUri, tapBehavior)
+            )
+        }
 
         loadRenderer(context, appWidgetId, true) {
             Log.d(TAG, "is ready!")
-            val md = cachedMarkdown[appWidgetId]
-            if (md == null) {
-                Log.e(TAG, "NO RENDERER TO UPDATE")
-                return@loadRenderer
-            }
-            val size = WidgetSizeProvider(context)
-            val (width, height) = size.getWidgetsSize(appWidgetId)
-            val views = RemoteViews(context.packageName, R.layout.markdown_file_widget)
-            val fileUri = Uri.parse(prefs[appWidgetId, PREF_FILE, ""])
-            val tapBehavior = prefs[appWidgetId, PREF_BEHAVIOUR, TAP_BEHAVIOUR_DEFAULT_APP]
-            if (tapBehavior != TAP_BEHAVIOUR_NONE) {
-                views.setOnClickPendingIntent(
-                    R.id.renderImg,
-                    getIntent(context, fileUri, tapBehavior)
-                )
-            }
-
-            val handler = Handler(Looper.getMainLooper())
-            handler.post {
-                val bitmap = md.getBitmap(width, height)
-                views.setImageViewBitmap(R.id.renderImg, bitmap)
-                appWidgetManager.updateAppWidget(appWidgetId, views)
-                Log.d(TAG, "Update after Update Request")
-            }
+            loadRendererCb(context, appWidgetManager, appWidgetId)
+            Log.d(TAG, "Update after Update Request")
         }
     }
 
@@ -197,19 +164,51 @@ class MarkdownFileWidget : AppWidgetProvider() {
      */
     private fun loadRenderer(context: Context, appWidgetId: Int, checkForChange: Boolean, cb: (()->Unit)) {
         val fileUri = prefs.markdownUriOf(appWidgetId)
-        val s = contentCache[fileUri] // FileServices(context, fileUri).content
-        val widgetSizeProvider = WidgetSizeProvider(context)
-        val widthRatio = widgetSizeProvider.getWidgetWidthRatio(appWidgetId, prefs)
-        var md = cachedMarkdown[appWidgetId]
-        if (md == null || (checkForChange && md.needsUpdate(s, widthRatio))) {
-            md = MarkdownRenderer(context, s, widthRatio, cb)
-            cachedMarkdown.put(appWidgetId, md)
-            Log.d(TAG, "New Renderer instance created ${md} from $fileUri: $s")
-        } else {
-            md.refresh(cb)
-            // NOT RELIABLE? - SEEMS TO BE RELIABLE AND FASTER
-            // cb()
-            Log.d(TAG, "Cached Renderer instance used ${md} from $fileUri: $s")
+        try {
+            val s = contentCache[fileUri]                       // throws
+            val widgetSizeProvider = WidgetSizeProvider(context)
+            val widthRatio = widgetSizeProvider.getWidgetWidthRatio(appWidgetId, prefs)
+            var md = cachedMarkdown[appWidgetId]
+            if (md == null || (checkForChange && md.needsUpdate(s, widthRatio))) {
+                md = MarkdownRenderer(context, s, widthRatio, cb)
+                cachedMarkdown.put(appWidgetId, md)
+                Log.d(TAG, "New Renderer instance created ${md} from $fileUri: $s")
+            } else {
+                md.refresh(cb)
+                // NOT RELIABLE? - SEEMS TO BE RELIABLE AND FASTER
+                // cb()
+                Log.d(TAG, "Cached Renderer instance used ${md} from $fileUri: $s")
+            }
+        } catch(err: Throwable) {
+            val msg = "Could not load md file: $err"
+            Log.e(TAG, msg)
+            Toast.makeText(context, msg, Toast.LENGTH_LONG).show()
+        }
+    }
+
+    /**
+     * Callback used by [loadRenderer]
+     */
+    private fun loadRendererCb(
+        context: Context,
+        appWidgetManager: AppWidgetManager,
+        appWidgetId: Int
+    ) {
+        val md = cachedMarkdown[appWidgetId]
+        if (md == null) {
+            Log.e(TAG, "NO RENDERER TO UPDATE")
+            return
+        }
+
+        val size = WidgetSizeProvider(context)
+        val (width, height) = size.getWidgetsSize(appWidgetId)
+        val views = RemoteViews(context.packageName, R.layout.markdown_file_widget)
+
+        val handler = Handler(Looper.getMainLooper())
+        handler.post {
+            val bitmap = md.getBitmap(width, height)
+            views.setImageViewBitmap(R.id.renderImg, bitmap)
+            appWidgetManager.updateAppWidget(appWidgetId, views)
         }
     }
 }

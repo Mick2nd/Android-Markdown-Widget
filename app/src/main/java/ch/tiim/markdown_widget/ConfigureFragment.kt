@@ -3,18 +3,16 @@ package ch.tiim.markdown_widget
 import android.content.res.Resources
 import android.os.Build
 import android.os.Bundle
-import android.text.Editable
 import android.util.Log
 import androidx.fragment.app.Fragment
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.Button
-import android.widget.CheckBox
-import android.widget.EditText
+import android.widget.AdapterView
+import android.widget.ArrayAdapter
 import android.widget.Toast
 import androidx.constraintlayout.widget.ConstraintLayout
-import androidx.core.widget.doOnTextChanged
+import ch.tiim.markdown_widget.databinding.FragmentConfigureBinding
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 
@@ -36,11 +34,15 @@ class ConfigureFragment : Fragment() {
     @Inject lateinit var permissionChecker: StoragePermissionChecker
     @Inject lateinit var contentCache: ContentCache
     @Inject lateinit var prefs: Preferences
+    private lateinit var binding: FragmentConfigureBinding
 
     // TODO: Rename and change types of parameters
     private var param1: String? = null
     private var param2: String? = null
 
+    /**
+     * [onCreate] override. Used here to read sample parameters.
+     */
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         arguments?.let {
@@ -49,31 +51,47 @@ class ConfigureFragment : Fragment() {
         }
     }
 
+    /**
+     * [onCreateView] override. Used here to create the view and establish the binding.
+     */
     override fun onCreateView(
-        inflater: LayoutInflater, container: ViewGroup?,
+        inflater: LayoutInflater,
+        container: ViewGroup?,
         savedInstanceState: Bundle?
-    ): View? {
+    ): View {
         // Inflate the layout for this fragment
-        return inflater.inflate(R.layout.fragment_configure, container, false)
+        // return inflater.inflate(R.layout.fragment_configure, container, false)
+        binding = FragmentConfigureBinding.inflate(inflater, container, false)
+        return binding.root
     }
 
+    /**
+     * [onViewCreated] override. Contains the main functionality. Button click handler and parameter
+     * reading / writing.
+     */
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        view.findViewById<Button>(R.id.revoke)?.setOnClickListener(View.OnClickListener {
+        binding.revoke.setOnClickListener(View.OnClickListener {
             prefs.revokeUserFolderPermission()
             Toast.makeText(view.context, "Permission for user folder revoked", Toast.LENGTH_SHORT).show()
         })
 
-        view.findViewById<Button>(R.id.refresh)?.setOnClickListener(View.OnClickListener {
-            contentCache.refresh()
+        binding.refresh.setOnClickListener(View.OnClickListener {
+            try {
+                contentCache.refresh()
+            } catch (err: Throwable) {
+                contentCache.clean()
+                Toast.makeText(view.context, "$err", Toast.LENGTH_LONG).show()
+            }
+
             for (appWidgetId in prefs.widgetIds()) {
                 getUpdatePendingIntent(view.context, appWidgetId).send()
             }
             Toast.makeText(view.context, "All widgets refreshed", Toast.LENGTH_SHORT).show()
         })
 
-        view.findViewById<CheckBox>(R.id.useUserStyle)?.let {
+        binding.useUserStyle.let {
             it.isChecked = prefs.useUserStyle
             it.setOnClickListener { _ ->
                 prefs.useUserStyle = it.isChecked
@@ -81,12 +99,20 @@ class ConfigureFragment : Fragment() {
             }
         }
 
-        view.findViewById<EditText>(R.id.zoom).let {
-            it.text = Editable.Factory.getInstance().newEditable((prefs.zoom * 100f).toInt().toString())
-            it.doOnTextChanged { text, _, _, _ ->
-                prefs.zoom = (text ?: "70").toString().toFloat() / 100f
-                displayOnDebug()
-            }
+        val spinner = binding.zoom
+        val adapter = ArrayAdapter.createFromResource(
+            view.context,
+            R.array.zoom_factors,
+            android.R.layout.simple_spinner_item
+        ).also { adapter ->
+            adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)          // Specify the layout to use when the list of choices appears.
+            spinner.adapter = adapter                                                               // Apply the adapter to the spinner.
+        }
+        spinner.also {
+            val zoom = (prefs.zoom * 100f).toInt().toString()
+            val pos = adapter.getPosition(zoom)
+            it.setSelection(pos)
+            it.onItemSelectedListener = listener
         }
 
         val (width, height) = getScreenSize()                                                       // this "settings" are used globally for DEBUG view
@@ -94,6 +120,13 @@ class ConfigureFragment : Fragment() {
         prefs[SCREEN_HEIGHT] = height.toString()
 
         displayOnDebug()
+    }
+
+    /**
+     * [onDestroy] override.
+     */
+    override fun onDestroy() {
+        super.onDestroy()
     }
 
     /**
@@ -212,5 +245,43 @@ class ConfigureFragment : Fragment() {
                     putString(ARG_PARAM2, param2)
                 }
             }
+    }
+
+    private val listener = object : AdapterView.OnItemSelectedListener {
+        /**
+         *
+         * Callback method to be invoked when an item in this view has been
+         * selected. This callback is invoked only when the newly selected
+         * position is different from the previously selected position or if
+         * there was no selected item.
+         *
+         * Implementers can call getItemAtPosition(position) if they need to access the
+         * data associated with the selected item.
+         *
+         * @param parent The AdapterView where the selection happened
+         * @param view The view within the AdapterView that was clicked
+         * @param position The position of the view in the adapter
+         * @param id The row id of the item that is selected
+         */
+        override fun onItemSelected(
+            parent: AdapterView<*>?,
+            view: View?,
+            position: Int,
+            id: Long
+        ) {
+            prefs.zoom = ( parent?.selectedItem ?: "70" ).toString().toFloat() / 100f
+            displayOnDebug()
+        }
+
+        /**
+         * Callback method to be invoked when the selection disappears from this
+         * view. The selection can disappear for instance when touch is activated
+         * or when the adapter becomes empty.
+         *
+         * @param parent The AdapterView that now contains no selected item.
+         */
+        override fun onNothingSelected(parent: AdapterView<*>?) {
+            // TODO("Not yet implemented")
+        }
     }
 }

@@ -16,8 +16,6 @@ import android.os.PowerManager
 import android.util.Log
 import android.widget.Toast
 import androidx.lifecycle.AndroidViewModel
-import ch.tiim.markdown_widget.di.CustomEntryPoint
-import dagger.hilt.EntryPoints
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 import javax.inject.Named
@@ -127,7 +125,7 @@ class UpdateService : Service() {
 
     private fun sendUpdateRequest(context: Context) {
         Log.i(TAG, "UserStyle.css updated")
-        for (appWidgetId in MarkdownFileWidget.appWidgetIds) {
+        for (appWidgetId in prefs.widgetIds()) {
             val pendingIntent = getUpdatePendingIntent(context, appWidgetId)
             pendingIntent.send()
         }
