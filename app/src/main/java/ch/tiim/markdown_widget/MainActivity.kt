@@ -1,6 +1,7 @@
 package ch.tiim.markdown_widget
 
 import android.os.Bundle
+import android.util.Log
 import androidx.appcompat.app.AppCompatActivity
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.FragmentActivity
@@ -21,6 +22,10 @@ private const val TAG = "MainActivity"
 class MainActivity : AppCompatActivity() {
 
     @Inject lateinit var permissionChecker: StoragePermissionChecker
+
+    init {
+        Log.i(TAG, "Init block")
+    }
 
     /**
      * [onCreate] Override.

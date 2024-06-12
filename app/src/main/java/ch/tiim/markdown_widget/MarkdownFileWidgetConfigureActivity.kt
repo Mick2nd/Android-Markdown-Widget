@@ -105,9 +105,6 @@ class MarkdownFileWidgetConfigureActivity @Inject constructor() : AppCompatActiv
         resultValue.putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId)
         setResult(RESULT_OK, resultValue)
 
-        val updateViewModel = UpdateViewModel(application)
-        updateViewModel.startService()
-
         finish()
     }
 

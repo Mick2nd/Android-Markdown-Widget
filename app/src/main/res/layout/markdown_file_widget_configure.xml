@@ -71,6 +71,7 @@
             android:id="@+id/radio_obsidian"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:checked="true"
             android:text="Open in obsidian note taking app" />
 
         <RadioButton

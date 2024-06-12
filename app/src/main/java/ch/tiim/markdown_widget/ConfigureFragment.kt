@@ -80,15 +80,14 @@ class ConfigureFragment : Fragment() {
         binding.refresh.setOnClickListener(View.OnClickListener {
             try {
                 contentCache.refresh()
+                for (appWidgetId in prefs.widgetIds()) {
+                    getUpdatePendingIntent(view.context, appWidgetId).send()
+                }
+                Toast.makeText(view.context, "All widgets refreshed", Toast.LENGTH_SHORT).show()
             } catch (err: Throwable) {
                 contentCache.clean()
                 Toast.makeText(view.context, "$err", Toast.LENGTH_LONG).show()
             }
-
-            for (appWidgetId in prefs.widgetIds()) {
-                getUpdatePendingIntent(view.context, appWidgetId).send()
-            }
-            Toast.makeText(view.context, "All widgets refreshed", Toast.LENGTH_SHORT).show()
         })
 
         binding.useUserStyle.let {

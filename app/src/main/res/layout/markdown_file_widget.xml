@@ -4,13 +4,15 @@
     style="@style/Widget.MarkdownWidget.AppWidget.Container"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#ffffffff">
-    <!--android:theme="@style/Theme.MarkdownWidget.AppWidgetContainer"-->
+    android:background="#ffffffff"
+    android:theme="@style/Theme.MarkdownWidget.AppWidgetContainer" >
 
     <ImageView
         android:id="@+id/renderImg"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
+        style="@style/Widget.MarkdownWidget.AppWidget.InnerView"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:clickable="true"
         android:scaleType="fitXY" />
 
 </RelativeLayout>

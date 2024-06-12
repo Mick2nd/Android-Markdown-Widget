@@ -9,18 +9,14 @@ import ch.tiim.markdown_widget.ExternalStoragePathHandler
 import ch.tiim.markdown_widget.ExternalStoragePathHandlerAlt
 import ch.tiim.markdown_widget.FileServices
 import ch.tiim.markdown_widget.Preferences
-import ch.tiim.markdown_widget.FileContentObserver
-import ch.tiim.markdown_widget.FileContentObserverImpl
 import ch.tiim.markdown_widget.StoragePermissionChecker
 import ch.tiim.markdown_widget.StoragePermissionCheckerImpl
-import ch.tiim.markdown_widget.createStylesObserver
 import dagger.Binds
 import dagger.Module
 import dagger.Provides
 import dagger.android.support.AndroidSupportInjectionModule
 import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
-import dagger.hilt.android.scopes.ActivityScoped
 import dagger.hilt.components.SingletonComponent
 import javax.inject.Named
 import javax.inject.Singleton
@@ -49,11 +45,6 @@ open class AppModule {
         return Preferences(context)
     }
 
-    @Provides
-    @Singleton
-    @Named("GLOBAL-2")
-    fun provideFileContentObserver2(@ApplicationContext context: Context, @Named("GLOBAL") uri: Uri) = createStylesObserver(context, uri)
-
     @Module
     @InstallIn(SingletonComponent::class)
     interface Bindings {
@@ -71,11 +62,6 @@ open class AppModule {
         @Singleton
         @Named("GLOBAL")
         fun provideExternalStoragePathHandlerAlt(impl: ExternalStoragePathHandlerAlt) : WebViewAssetLoader.PathHandler
-
-        @Binds
-        @Singleton
-        @Named("GLOBAL-1")
-        fun provideFileContentObserver1(impl: FileContentObserverImpl) : FileContentObserver
 
         @Binds
         @Singleton

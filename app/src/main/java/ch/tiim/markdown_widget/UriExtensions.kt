@@ -178,5 +178,8 @@ fun Uri.loadContent(context: Context) : String {
             } .await()
         }
     }
+    if (scheme == null) {
+        return ""
+    }
     throw IllegalArgumentException("Illegal scheme $scheme for loadContent")
 }

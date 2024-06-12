@@ -1,12 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
-    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.INTERNET" />
 
+    <!--
+    <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" />
+    <queries>
+        <package android:name="ch.tiim.markdown_widget" />
+        <intent>
+            <action android:name="android.intent.action.EDIT" />
+            <data android:mimeType="text/plain" />
+        </intent>
+    </queries>
+    -->
     <application
         android:name=".Main"
         android:allowBackup="true"
@@ -19,24 +26,6 @@
 
         <meta-data android:name="android.webkit.WebView.EnableSafeBrowsing"
             android:value="false" />
-
-        <receiver
-            android:name=".PackageReplacedReceiver"
-            android:enabled="true"
-            android:exported="true">
-            <intent-filter>
-                <category android:name="android.intent.category.HOME" />
-                <action android:name="android.intent.action.BOOT_COMPLETED" />
-                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
-            </intent-filter>
-        </receiver>
-
-        <service
-            android:name=".UpdateService"
-            android:enabled="true"
-            android:exported="true"
-            android:permission="android.permission.FOREGROUND_SERVICE"
-            android:foregroundServiceType="dataSync"/>
 
         <receiver
             android:name=".MarkdownFileWidget"
@@ -59,6 +48,10 @@
             android:exported="true">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_CONFIGURE" />
+                <!--
+                <action android:name="android.intent.action.EDIT" />
+                <category android:name="android.intent.category.DEFAULT" />
+                -->
             </intent-filter>
         </activity>
 
@@ -68,6 +61,13 @@
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
+                <!--
+                <action android:name="android.intent.action.EDIT" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.OPENABLE" />
+                <data android:mimeType="text/plain"/>
+                <data android:mimeType="text/markdown"/>
+                -->
             </intent-filter>
         </activity>
     </application>

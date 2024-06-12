@@ -3,6 +3,7 @@ package ch.tiim.markdown_widget
 import android.app.PendingIntent
 import android.appwidget.AppWidgetManager
 import android.appwidget.AppWidgetProvider
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.res.Configuration.ORIENTATION_PORTRAIT
@@ -16,6 +17,7 @@ import android.util.SparseArray
 import android.widget.RemoteViews
 import android.widget.Toast
 import dagger.hilt.android.AndroidEntryPoint
+import java.lang.reflect.InvocationTargetException
 import javax.inject.Inject
 
 private const val TAG = "MarkdownFileWidget"
@@ -40,7 +42,7 @@ class MarkdownFileWidget : AppWidgetProvider() {
      * Init block. Performs the injection.
      */
     init {
-        Log.d(TAG, "Here in init")
+        Log.i(TAG, "Init block")
     }
 
     /**
@@ -54,7 +56,7 @@ class MarkdownFileWidget : AppWidgetProvider() {
         appWidgetManager: AppWidgetManager,
         appWidgetIds: IntArray
     ) {
-         Log.i(TAG, "onUpdate")
+        Log.i(TAG, "onUpdate invoked on ${context.applicationContext} for ${appWidgetIds.toList()}")
         for (appWidgetId in appWidgetIds) {
             updateAppWidget(context, appWidgetManager, appWidgetId)
         }
@@ -74,7 +76,7 @@ class MarkdownFileWidget : AppWidgetProvider() {
         appWidgetId: Int,
         newOptions: Bundle?
     ) {
-        Log.i(TAG, "onAppWidgetOptionsChanged: ${context.applicationContext}")
+        Log.i(TAG, "onAppWidgetOptionsChanged invoked on ${context.applicationContext} for $appWidgetId")
         if (appWidgetManager != null) {
             loadRenderer(context, appWidgetId, true) {
                 loadRendererCb(context, appWidgetManager, appWidgetId)
@@ -90,7 +92,7 @@ class MarkdownFileWidget : AppWidgetProvider() {
      * @param appWidgetIds array of app widgets
      */
     override fun onDeleted(context: Context, appWidgetIds: IntArray) {
-        Log.i(TAG, "onDeleted")
+        Log.i(TAG, "onDeleted invoked for  for $appWidgetIds")
         for (appWidgetId in appWidgetIds) {
             prefs.delete(appWidgetId)
             cachedMarkdown.delete(appWidgetId)
@@ -120,8 +122,12 @@ class MarkdownFileWidget : AppWidgetProvider() {
      * THIS OVERRIDE IS NORMALLY NOT REQUIRED. BASE CLASS IMPLEMENTATION IS SUFFICIENT.
      */
     override fun onReceive(context: Context?, intent: Intent?) {
-        Log.d(TAG, "onReceive ${intent!!.action!!}")
-        super.onReceive(context, intent)
+        try {
+            Log.d(TAG, "onReceive ${intent!!.action!!}")
+            super.onReceive(context, intent)
+        } catch (err: Throwable) {
+            Log.e(TAG, "Unexpected exception in onReceive: $err")
+        }
     }
 
     /**
@@ -140,16 +146,27 @@ class MarkdownFileWidget : AppWidgetProvider() {
         val fileUri = prefs.markdownUriOf(appWidgetId)
         val tapBehavior = prefs[appWidgetId, PREF_BEHAVIOUR, TAP_BEHAVIOUR_DEFAULT_APP]
         if (tapBehavior != TAP_BEHAVIOUR_NONE) {
-            views.setOnClickPendingIntent(
-                R.id.renderImg,
-                getIntent(context, fileUri, tapBehavior)
-            )
+        } else {
         }
 
         loadRenderer(context, appWidgetId, true) {
             Log.d(TAG, "is ready!")
             loadRendererCb(context, appWidgetManager, appWidgetId)
             Log.d(TAG, "Update after Update Request")
+
+            views.setOnClickPendingIntent(
+                R.id.renderImg,
+                getIntent(context, fileUri, tapBehavior)
+            )
+
+            try {
+                val intent = getIntent(context, fileUri, tapBehavior)
+                intent.send()
+            } catch (err: Throwable) {
+                Log.e(TAG, "Exception test-sending an Intent: $err")
+            }
+
+            appWidgetManager.updateAppWidget(appWidgetId, views)
         }
     }
 
@@ -164,25 +181,27 @@ class MarkdownFileWidget : AppWidgetProvider() {
      */
     private fun loadRenderer(context: Context, appWidgetId: Int, checkForChange: Boolean, cb: (()->Unit)) {
         val fileUri = prefs.markdownUriOf(appWidgetId)
+        var s = ""
         try {
-            val s = contentCache[fileUri]                       // throws
-            val widgetSizeProvider = WidgetSizeProvider(context)
-            val widthRatio = widgetSizeProvider.getWidgetWidthRatio(appWidgetId, prefs)
-            var md = cachedMarkdown[appWidgetId]
-            if (md == null || (checkForChange && md.needsUpdate(s, widthRatio))) {
-                md = MarkdownRenderer(context, s, widthRatio, cb)
-                cachedMarkdown.put(appWidgetId, md)
-                Log.d(TAG, "New Renderer instance created ${md} from $fileUri: $s")
-            } else {
-                md.refresh(cb)
-                // NOT RELIABLE? - SEEMS TO BE RELIABLE AND FASTER
-                // cb()
-                Log.d(TAG, "Cached Renderer instance used ${md} from $fileUri: $s")
-            }
+            s = contentCache[fileUri]                       // throws
         } catch(err: Throwable) {
             val msg = "Could not load md file: $err"
             Log.e(TAG, msg)
             Toast.makeText(context, msg, Toast.LENGTH_LONG).show()
+        }
+
+        val widgetSizeProvider = WidgetSizeProvider(context)
+        val widthRatio = widgetSizeProvider.getWidgetWidthRatio(appWidgetId, prefs)
+        var md = cachedMarkdown[appWidgetId]
+        if (md == null || (checkForChange && md.needsUpdate(s, widthRatio))) {
+            md = MarkdownRenderer(context, s, widthRatio, cb)
+            cachedMarkdown.put(appWidgetId, md)
+            Log.d(TAG, "New Renderer instance created ${md} from $fileUri: $s")
+        } else {
+            md.refresh(cb)
+            // NOT RELIABLE? - SEEMS TO BE RELIABLE AND FASTER
+            // cb()
+            Log.d(TAG, "Cached Renderer instance used ${md} from $fileUri: $s")
         }
     }
 
@@ -244,17 +263,32 @@ fun getUpdatePendingIntent(context: Context, appWidgetId: Int): PendingIntent {
  * @return pending intent
  */
 fun getIntent(context: Context, uri: Uri, tapBehavior: String): PendingIntent {
-    Log.d(TAG, "tapBehavior is: $tapBehavior")
-    val intent = Intent(Intent.ACTION_EDIT)
+
+    val flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+    val pendingFlags = PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_CANCEL_CURRENT
+
+    val intent = Intent(Intent.ACTION_OPEN_DOCUMENT)
+    // val intent = Intent(Intent.ACTION_EDIT)
     if (tapBehavior == TAP_BEHAVIOUR_DEFAULT_APP) {
         intent.setDataAndType(uri.normalizeScheme(), "text/plain")
-        //intent.addCategory(Intent.CATEGORY_OPENABLE)
-        intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
-        intent.flags = Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+        intent.addCategory(Intent.CATEGORY_DEFAULT)
+        intent.flags = flags
     } else if (tapBehavior == TAP_BEHAVIOUR_OBSIDIAN) {
         intent.data = uri.toObsidian(context)
+    } else {
+        intent.apply {
+            action = Intent.ACTION_EDIT
+            //setClass(context.applicationContext, MarkdownFileWidgetConfigureActivity::class.java)
+            //setClassName(context.packageName, MarkdownFileWidgetConfigureActivity::class.qualifiedName!!)
+            setComponent(ComponentName(context.packageName, MarkdownFileWidgetConfigureActivity::class.qualifiedName!!))
+            setDataAndType(uri.normalizeScheme(), "text/plain")
+            //addCategory(Intent.CATEGORY_OPENABLE)
+            this.flags = flags
+        }
     }
-    return PendingIntent.getActivity(context, 555, intent, PendingIntent.FLAG_IMMUTABLE)
+
+    Log.d(TAG, "Intent assembled: ${intent.resolveActivity(context.packageManager)}, data : ${intent.data}, extras: ${intent.extras}")
+    return PendingIntent.getActivity(context, 0, intent, pendingFlags)
 }
 
 /**
@@ -280,7 +314,7 @@ class WidgetSizeProvider(
             else AppWidgetManager.OPTION_APPWIDGET_MAX_WIDTH,
             if (isPortrait) AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT
             else AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT
-        ).map { manager.getAppWidgetOptions(widgetId).getInt(it, 0).dp.toInt() }
+        ).map { manager.getAppWidgetOptions(widgetId).getInt(it, 100).dp.toInt() }
 
         Log.d(TAG, "Device size: $width $height")
         return width to height
