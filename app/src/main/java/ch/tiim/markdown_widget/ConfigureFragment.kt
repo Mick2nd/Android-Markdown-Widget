@@ -11,17 +11,12 @@ import android.view.ViewGroup
 import android.widget.AdapterView
 import android.widget.ArrayAdapter
 import android.widget.Toast
-import androidx.constraintlayout.widget.ConstraintLayout
 import ch.tiim.markdown_widget.databinding.FragmentConfigureBinding
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 
-// TODO: Rename parameter arguments, choose names that match
-// the fragment initialization parameters, e.g. ARG_ITEM_NUMBER
-private const val ARG_PARAM1 = "param1"
-private const val ARG_PARAM2 = "param2"
-
 private const val DEBUG = true
+private const val TAG = "ConfigureFragment"
 
 /**
  * A simple [Fragment] subclass.
@@ -36,18 +31,12 @@ class ConfigureFragment : Fragment() {
     @Inject lateinit var prefs: Preferences
     private lateinit var binding: FragmentConfigureBinding
 
-    // TODO: Rename and change types of parameters
-    private var param1: String? = null
-    private var param2: String? = null
-
     /**
      * [onCreate] override. Used here to read sample parameters.
      */
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         arguments?.let {
-            param1 = it.getString(ARG_PARAM1)
-            param2 = it.getString(ARG_PARAM2)
         }
     }
 
@@ -58,7 +47,7 @@ class ConfigureFragment : Fragment() {
         inflater: LayoutInflater,
         container: ViewGroup?,
         savedInstanceState: Bundle?
-    ): View {
+    ) : View {
         // Inflate the layout for this fragment
         // return inflater.inflate(R.layout.fragment_configure, container, false)
         binding = FragmentConfigureBinding.inflate(inflater, container, false)
@@ -72,14 +61,16 @@ class ConfigureFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        binding.revoke.setOnClickListener(View.OnClickListener {
+        binding.revoke.setOnClickListener {
             prefs.revokeUserFolderPermission()
-            Toast.makeText(view.context, "Permission for user folder revoked", Toast.LENGTH_SHORT).show()
-        })
+            Toast.makeText(view.context, "Permission for user folder revoked", Toast.LENGTH_SHORT)
+                .show()
+        }
 
-        binding.refresh.setOnClickListener(View.OnClickListener {
+        binding.refresh.setOnClickListener {
             try {
                 contentCache.refresh()
+                Log.d(TAG, "Widgets to be refreshed: ${prefs.widgetIds()}")
                 for (appWidgetId in prefs.widgetIds()) {
                     getUpdatePendingIntent(view.context, appWidgetId).send()
                 }
@@ -88,7 +79,7 @@ class ConfigureFragment : Fragment() {
                 contentCache.clean()
                 Toast.makeText(view.context, "$err", Toast.LENGTH_LONG).show()
             }
-        })
+        }
 
         binding.useUserStyle.let {
             it.isChecked = prefs.useUserStyle
@@ -139,9 +130,9 @@ class ConfigureFragment : Fragment() {
                 
                 ## Table
                         
-                |1|2|
+                |Column 1|Column 2|
                 |-|-|
-                |1|2|
+                |Item 1.1|Item 1.2|
                 [Sample]
                 
                 ## Code Block...
@@ -154,8 +145,8 @@ class ConfigureFragment : Fragment() {
                 
                 ```xml
                     <root>
-                        <item name="Jürgen">Sample Text</item
-                        <item name="Regina">Sample Text</item
+                        <item name="Jürgen">Sample Text</item>
+                        <item name="Regina">Sample Text</item>
                     </root>
                 ```
 
@@ -166,6 +157,8 @@ class ConfigureFragment : Fragment() {
                 Alice->>John: Hello John, how are you?
                 John-->>Alice: Great
                 ```
+                
+                The symbol $\mathbb N$ is the symbol for natural numbers.
                 
                 ```math
                 \Gamma(n) = (n-1)!\quad\forall n\in\mathbb N
@@ -191,11 +184,8 @@ class ConfigureFragment : Fragment() {
                 A~1~, B^2^
                 
             """.trimIndent()
-
-            val debugLayout = view?.findViewById<ConstraintLayout>(R.id.debugLayout)
-            Log.d("Test:", testTxt)
-            Log.d("Test", "debugLayout is $debugLayout")
-            debugLayout?.addView(
+            val debugLayout = binding.debugLayout
+            debugLayout.addView(
                 MarkdownRenderer(
                     requireActivity().applicationContext,
                     testTxt
@@ -211,18 +201,18 @@ class ConfigureFragment : Fragment() {
      * @return Dimensions in Pixels
      */
     private fun getScreenSize() : Pair<Int, Int> {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             val windowMetrics = requireActivity().windowManager.currentWindowMetrics
             val width = windowMetrics.bounds.width()
             val height = windowMetrics.bounds.height()
 
-            return width to height
+            width to height
         } else {
             val displayMetrics = Resources.getSystem().displayMetrics
             val width = displayMetrics.widthPixels
             val height = displayMetrics.heightPixels
 
-            return width to height
+            width to height
         }
     }
 
@@ -231,19 +221,12 @@ class ConfigureFragment : Fragment() {
          * Use this factory method to create a new instance of
          * this fragment using the provided parameters.
          *
-         * @param param1 Parameter 1.
-         * @param param2 Parameter 2.
          * @return A new instance of fragment ConfigureFragment.
          */
-        // TODO: Rename and change types and number of parameters
         @JvmStatic
-        fun newInstance(param1: String, param2: String) =
+        fun newInstance() =
             ConfigureFragment().apply {
-                arguments = Bundle().apply {
-                    putString(ARG_PARAM1, param1)
-                    putString(ARG_PARAM2, param2)
-                }
-            }
+        }
     }
 
     private val listener = object : AdapterView.OnItemSelectedListener {

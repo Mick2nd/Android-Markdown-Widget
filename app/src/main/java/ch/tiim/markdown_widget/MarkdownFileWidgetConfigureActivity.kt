@@ -4,6 +4,7 @@ import android.appwidget.AppWidgetManager
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
+import android.util.Log
 import android.view.View
 import android.webkit.MimeTypeMap
 import android.widget.EditText
@@ -19,6 +20,9 @@ import javax.inject.Inject
 internal const val TAP_BEHAVIOUR_NONE = "none"
 internal const val TAP_BEHAVIOUR_DEFAULT_APP = "default_app"
 internal const val TAP_BEHAVIOUR_OBSIDIAN = "obsidian"
+internal const val TAP_BEHAVIOUR_ITSELF = "self"
+
+private const val TAG = "MarkdownFileWidgetConfigureActivity"
 
 /**
  * The configuration screen for the [MarkdownFileWidget] AppWidget.
@@ -34,15 +38,36 @@ class MarkdownFileWidgetConfigureActivity @Inject constructor() : AppCompatActiv
     private lateinit var binding: MarkdownFileWidgetConfigureBinding
     private lateinit var resultLauncher: ActivityResultLauncher<Intent>
 
+    init {
+        Log.d(TAG, "Init block")
+    }
+
     /**
      * [onCreate] override. Handles the creation of this activity.
      */
-    public override fun onCreate(icicle: Bundle?) {
-        super.onCreate(icicle)
+    public override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        Log.d(TAG, "onCreate")
+
+        // Find the widget id from the intent.
+        val extras = intent.extras
+        if (extras != null) {
+            appWidgetId = extras.getInt(
+                AppWidgetManager.EXTRA_APPWIDGET_ID, AppWidgetManager.INVALID_APPWIDGET_ID
+            )
+        }
+        val resultValue = Intent()
+        resultValue.putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId)
 
         // Set the result to CANCELED.  This will cause the widget host to cancel
         // out of the widget placement if the user presses the back button.
-        setResult(RESULT_CANCELED)
+        setResult(RESULT_CANCELED, resultValue)
+
+        // If this activity was started with an intent without an app widget ID, finish with an error.
+        if (appWidgetId == AppWidgetManager.INVALID_APPWIDGET_ID) {
+            finish()
+            return
+        }
 
         binding = MarkdownFileWidgetConfigureBinding.inflate(layoutInflater)
         setContentView(binding.root)
@@ -51,22 +76,8 @@ class MarkdownFileWidgetConfigureActivity @Inject constructor() : AppCompatActiv
         radioGroup = binding.radiogroup
         binding.addButton.setOnClickListener(onAddWidget)
         binding.btnBrowse.setOnClickListener(onBrowse)
-        binding.radioDefaultApp.isSelected = true
-
-        // Find the widget id from the intent.
-        val intent = intent
-        val extras = intent.extras
-        if (extras != null) {
-            appWidgetId = extras.getInt(
-                AppWidgetManager.EXTRA_APPWIDGET_ID, AppWidgetManager.INVALID_APPWIDGET_ID
-            )
-        }
-
-        // If this activity was started with an intent without an app widget ID, finish with an error.
-        if (appWidgetId == AppWidgetManager.INVALID_APPWIDGET_ID) {
-            finish()
-            return
-        }
+        // TODO: what is this?
+        // binding.radioDefaultApp.isSelected = true
 
         resultLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
             onActivityResult(it)
@@ -85,15 +96,10 @@ class MarkdownFileWidgetConfigureActivity @Inject constructor() : AppCompatActiv
 
         val rID = radioGroup.checkedRadioButtonId
         val tapBehaviour = when (rID) {
-            R.id.radio_noop -> {
-                TAP_BEHAVIOUR_NONE
-            }
-            R.id.radio_obsidian -> {
-                TAP_BEHAVIOUR_OBSIDIAN
-            }
-            else -> {
-                TAP_BEHAVIOUR_DEFAULT_APP
-            }
+            R.id.radio_noop -> TAP_BEHAVIOUR_NONE
+            R.id.radio_obsidian -> TAP_BEHAVIOUR_OBSIDIAN
+            R.id.radio_self -> TAP_BEHAVIOUR_ITSELF
+            else -> TAP_BEHAVIOUR_DEFAULT_APP
         }
         prefs[appWidgetId, PREF_BEHAVIOUR] = tapBehaviour
 

@@ -9,12 +9,16 @@ import android.util.Log
 import androidx.core.net.toFile
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import java.io.BufferedReader
+import java.io.BufferedWriter
 import java.io.File
 import java.io.FileNotFoundException
 import java.io.InputStream
 import java.io.InputStreamReader
+import java.io.OutputStream
+import java.io.OutputStreamWriter
 import java.net.HttpURLConnection
 import java.net.URL
 
@@ -141,8 +145,9 @@ fun Uri.loadUrl() : String {
  * @throws FileNotFoundException
  */
 fun URL.loadUrl() : String {
-        return runBlocking {
-            val job = async(Dispatchers.IO) {
+        Log.d(TAG, "About to read from Url")
+        return runBlocking(Dispatchers.IO) {
+            val job = async {
                 openConnection().run {
                     this as HttpURLConnection
                     val text = inputStream.bufferedReader().readText()
@@ -152,7 +157,9 @@ fun URL.loadUrl() : String {
                     text
                 }
             }
-            job.await()
+            val result = job.await()
+            Log.d(TAG, "Result from Web: $result")
+            result
         }
 }
 
@@ -182,4 +189,27 @@ fun Uri.loadContent(context: Context) : String {
         return ""
     }
     throw IllegalArgumentException("Illegal scheme $scheme for loadContent")
+}
+
+fun Uri.store(context: Context, text: String) {
+    storeContent(context, text)
+}
+
+fun Uri.storeContent(context: Context, text: String) {
+    if (scheme in arrayOf("content")) {
+        val receiver = this
+        return runBlocking(Dispatchers.IO) {
+            launch {
+                val outs: OutputStream = context.contentResolver.openOutputStream(receiver)!!
+                val writer = BufferedWriter(OutputStreamWriter(outs, "utf-8"))
+                writer.write(text)
+                writer.close()
+                outs.close()
+            }
+        }
+    }
+    if (scheme == null) {
+        return
+    }
+    throw IllegalArgumentException("Illegal scheme $scheme for storeContent")
 }

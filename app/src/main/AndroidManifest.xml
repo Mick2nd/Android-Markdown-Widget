@@ -13,7 +13,16 @@
             <data android:mimeType="text/plain" />
         </intent>
     </queries>
+
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.EDIT" />
+            <category android:name="android.intent.category.DEFAULT" />
+            <data android:mimeType="text/plain" />
+        </intent>
+    </queries>
     -->
+
     <application
         android:name=".Main"
         android:allowBackup="true"
@@ -48,10 +57,6 @@
             android:exported="true">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_CONFIGURE" />
-                <!--
-                <action android:name="android.intent.action.EDIT" />
-                <category android:name="android.intent.category.DEFAULT" />
-                -->
             </intent-filter>
         </activity>
 
@@ -60,14 +65,9 @@
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.LAUNCHER" />
-                <!--
                 <action android:name="android.intent.action.EDIT" />
+                <category android:name="android.intent.category.LAUNCHER" />
                 <category android:name="android.intent.category.DEFAULT" />
-                <category android:name="android.intent.category.OPENABLE" />
-                <data android:mimeType="text/plain"/>
-                <data android:mimeType="text/markdown"/>
-                -->
             </intent-filter>
         </activity>
     </application>

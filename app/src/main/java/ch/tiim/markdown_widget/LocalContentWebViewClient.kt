@@ -42,7 +42,7 @@ open class LocalContentWebViewClient(private val assetLoader: WebViewAssetLoader
                 return r
             }
 
-        } catch (err: Exception) {
+        } catch (err: Throwable) {
             Log.w(TAG, "Non existence of ${request.url.path} simply suppressed: $err")
             return null
         }

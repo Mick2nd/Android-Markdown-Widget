@@ -92,7 +92,7 @@ class MarkdownFileWidget : AppWidgetProvider() {
      * @param appWidgetIds array of app widgets
      */
     override fun onDeleted(context: Context, appWidgetIds: IntArray) {
-        Log.i(TAG, "onDeleted invoked for  for $appWidgetIds")
+        Log.i(TAG, "onDeleted invoked for  for ${appWidgetIds.toList()}")
         for (appWidgetId in appWidgetIds) {
             prefs.delete(appWidgetId)
             cachedMarkdown.delete(appWidgetId)
@@ -142,31 +142,11 @@ class MarkdownFileWidget : AppWidgetProvider() {
         appWidgetManager: AppWidgetManager,
         appWidgetId: Int
     ) {
-        val views = RemoteViews(context.packageName, R.layout.markdown_file_widget)
-        val fileUri = prefs.markdownUriOf(appWidgetId)
-        val tapBehavior = prefs[appWidgetId, PREF_BEHAVIOUR, TAP_BEHAVIOUR_DEFAULT_APP]
-        if (tapBehavior != TAP_BEHAVIOUR_NONE) {
-        } else {
-        }
-
         loadRenderer(context, appWidgetId, true) {
-            Log.d(TAG, "is ready!")
             loadRendererCb(context, appWidgetManager, appWidgetId)
             Log.d(TAG, "Update after Update Request")
 
-            views.setOnClickPendingIntent(
-                R.id.renderImg,
-                getIntent(context, fileUri, tapBehavior)
-            )
-
-            try {
-                val intent = getIntent(context, fileUri, tapBehavior)
-                intent.send()
-            } catch (err: Throwable) {
-                Log.e(TAG, "Exception test-sending an Intent: $err")
-            }
-
-            appWidgetManager.updateAppWidget(appWidgetId, views)
+            registerPendingIntents(context, appWidgetManager, appWidgetId)
         }
     }
 
@@ -181,6 +161,10 @@ class MarkdownFileWidget : AppWidgetProvider() {
      */
     private fun loadRenderer(context: Context, appWidgetId: Int, checkForChange: Boolean, cb: (()->Unit)) {
         val fileUri = prefs.markdownUriOf(appWidgetId)
+        if (fileUri.scheme == null) {
+            Log.i(TAG, "Invoked Markdown Widget with empty Uri, probably first time call.")
+            return
+        }
         var s = ""
         try {
             s = contentCache[fileUri]                       // throws
@@ -230,6 +214,59 @@ class MarkdownFileWidget : AppWidgetProvider() {
             appWidgetManager.updateAppWidget(appWidgetId, views)
         }
     }
+
+    private fun registerPendingIntents(
+        context: Context,
+        appWidgetManager: AppWidgetManager,
+        appWidgetId: Int
+    ) {
+        val views = RemoteViews(context.packageName, R.layout.markdown_file_widget)
+        views.setOnClickPendingIntent(
+            R.id.renderImg,
+            getIntent(context, appWidgetId)
+        )
+        views.setOnClickPendingIntent(
+            R.id.refreshImageButton,
+            getUpdatePendingIntent(context, appWidgetId)
+        )
+        appWidgetManager.updateAppWidget(appWidgetId, views)
+    }
+
+    /**
+     * Returns the Intent to be used to request the invocation of the Markdown editor.
+     * Depends on the configured method during Widget creation.
+     * TODO: obsidian not reacting
+     *
+     * @param appWidgetId the id of the App Widget initiating this request
+     * @return pending intent
+     */
+    private fun getIntent(context: Context, appWidgetId: Int): PendingIntent? {
+
+        val uri = prefs.markdownUriOf(appWidgetId)
+        val tapBehavior = prefs[appWidgetId, PREF_BEHAVIOUR, TAP_BEHAVIOUR_DEFAULT_APP]
+
+        val flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+        val pendingFlags = PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+
+        val intent = Intent(Intent.ACTION_EDIT).apply {
+            this.flags = flags
+            putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId)
+
+            when (tapBehavior) {
+                TAP_BEHAVIOUR_DEFAULT_APP -> setDataAndType(uri.normalizeScheme(), "text/plain")
+                TAP_BEHAVIOUR_OBSIDIAN -> data = uri.toObsidian(context)
+                TAP_BEHAVIOUR_ITSELF -> {
+                    setComponent(ComponentName(context.packageName, MainActivity::class.qualifiedName!!))
+                    setDataAndType(uri.normalizeScheme(), "text/plain")
+                }
+                else -> { return null }
+            }
+        }
+
+        val pendingIntent = PendingIntent.getActivity(context, 0, intent, pendingFlags)
+        Log.d(TAG, "Intent assembled: ${intent.resolveActivity(context.packageManager)}, data : ${intent.data}, extras: ${intent.extras} , tap: $tapBehavior")
+        return pendingIntent
+    }
 }
 
 /**
@@ -250,45 +287,8 @@ fun getUpdatePendingIntent(context: Context, appWidgetId: Int): PendingIntent {
         intentUpdate,
         PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
     )
+    Log.d(TAG, "Intent assembled: ${intentUpdate.resolveActivity(context.packageManager)}, data : ${intentUpdate.data}, extras: ${intentUpdate.extras}")
     return pendingUpdate
-}
-
-/**
- * Returns the Intent to be used to request the invocation of the Markdown editor.
- * Depends on the configured method during Widget creation.
- * TODO: obsidian not reacting
- *
- * @param uri Uri of the file
- * @param tapBehavior configured Tap method
- * @return pending intent
- */
-fun getIntent(context: Context, uri: Uri, tapBehavior: String): PendingIntent {
-
-    val flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
-    val pendingFlags = PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_CANCEL_CURRENT
-
-    val intent = Intent(Intent.ACTION_OPEN_DOCUMENT)
-    // val intent = Intent(Intent.ACTION_EDIT)
-    if (tapBehavior == TAP_BEHAVIOUR_DEFAULT_APP) {
-        intent.setDataAndType(uri.normalizeScheme(), "text/plain")
-        intent.addCategory(Intent.CATEGORY_DEFAULT)
-        intent.flags = flags
-    } else if (tapBehavior == TAP_BEHAVIOUR_OBSIDIAN) {
-        intent.data = uri.toObsidian(context)
-    } else {
-        intent.apply {
-            action = Intent.ACTION_EDIT
-            //setClass(context.applicationContext, MarkdownFileWidgetConfigureActivity::class.java)
-            //setClassName(context.packageName, MarkdownFileWidgetConfigureActivity::class.qualifiedName!!)
-            setComponent(ComponentName(context.packageName, MarkdownFileWidgetConfigureActivity::class.qualifiedName!!))
-            setDataAndType(uri.normalizeScheme(), "text/plain")
-            //addCategory(Intent.CATEGORY_OPENABLE)
-            this.flags = flags
-        }
-    }
-
-    Log.d(TAG, "Intent assembled: ${intent.resolveActivity(context.packageManager)}, data : ${intent.data}, extras: ${intent.extras}")
-    return PendingIntent.getActivity(context, 0, intent, pendingFlags)
 }
 
 /**

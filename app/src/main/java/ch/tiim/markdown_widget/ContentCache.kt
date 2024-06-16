@@ -14,31 +14,49 @@ import javax.inject.Inject
 class ContentCacheImpl @Inject constructor(@ApplicationContext private val context: Context, private val prefs: Preferences) : ContentCache {
 
     /**
-     * Loads data string given an uri. Either from Cache of (if not present) from the original
+     * Loads data string given an uri. Either from Cache or (if not present) from the original
      * source.
      */
     override fun get(uri: Uri): String {
-        val cachedContent = prefs["$uri", ""]
-        if (cachedContent != "") {
-            return cachedContent
+        synchronized(this) {
+            val cachedContent = prefs["$uri", ""]
+            if (cachedContent != "") {
+                return cachedContent
+            }
+            return load(uri)
         }
-        return getNew(uri)
     }
 
     /**
      * Stores a [String] in the cache.
      */
     override fun set(uri: Uri, value: String) {
-        prefs["$uri"] = value
+        synchronized(this) {
+            prefs["$uri"] = value
+        }
     }
 
     /**
      * Loads data string from original source.
      */
-    override fun getNew(uri: Uri): String {
-        val text = uri.load(context)
-        this[uri] = text
-        return text
+    override fun load(uri: Uri): String {
+        synchronized(this) {
+            val text = uri.load(context)
+            this[uri] = text                                // write into cache
+            return text
+        }
+    }
+
+    /**
+     * Stores data string back to original source, also updating the cache
+     */
+    override fun store(uri: Uri, value: String) {
+        synchronized(this) {
+            prefs["$uri"] = value
+            if (uri.scheme == "content") {
+                uri.store(context, value)
+            }
+        }
     }
 
     /**
@@ -62,7 +80,7 @@ class ContentCacheImpl @Inject constructor(@ApplicationContext private val conte
      */
     override fun refresh() {
         for (uri in prefs.uris()) {
-            getNew(uri)
+            load(uri)
         }
     }
 
@@ -92,7 +110,12 @@ interface ContentCache {
     /**
      * Loads data string from original source.
      */
-    fun getNew(uri: Uri) : String
+    fun load(uri: Uri) : String
+
+    /**
+     * Stores data string back to original source, also updating the cache
+     */
+    fun store(uri: Uri, value: String)
 
     /**
      * Invalidates a single [Uri] by deleting its cache.

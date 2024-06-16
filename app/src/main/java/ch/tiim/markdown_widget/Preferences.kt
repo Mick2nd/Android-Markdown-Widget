@@ -45,6 +45,13 @@ open class Preferences(@ApplicationContext private val context: Context) {
         cache.clear()
     }
 
+    fun reset() {
+        synchronized(this) {
+            clearCache()
+            internalReset()
+        }
+    }
+
     /**
      * Read "Global" preference
      *
@@ -379,6 +386,16 @@ open class Preferences(@ApplicationContext private val context: Context) {
                 val prefs = context.getSharedPreferences(PREFS_NAME, 0)
                 prefs.all.keys
             }.await()
+        }
+    }
+
+    private fun internalReset() {
+        runBlocking(Dispatchers.IO) {
+            launch {
+                val prefs = context.getSharedPreferences(PREFS_NAME, 0).edit()
+                prefs.clear()
+                prefs.apply()
+            }
         }
     }
 }

@@ -16,4 +16,7 @@
     <string name="button_refresh">Refresh Widgets</string>
     <string name="use_userstyle_css">Use userstyle.css</string>
     <string name="zoom_factor">zoom factor in %</string>
+    <string name="refresh_the_widget">Refresh the widget</string>
+    <string name="stores_the_changes">Stores the changes and updates the widget</string>
+    <string name="editor_area">Editor area</string>
 </resources>
