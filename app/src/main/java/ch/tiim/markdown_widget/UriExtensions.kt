@@ -9,18 +9,22 @@ import android.util.Log
 import androidx.core.net.toFile
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
+import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import java.io.BufferedReader
 import java.io.BufferedWriter
 import java.io.File
 import java.io.FileNotFoundException
+import java.io.IOException
 import java.io.InputStream
 import java.io.InputStreamReader
 import java.io.OutputStream
 import java.io.OutputStreamWriter
 import java.net.HttpURLConnection
 import java.net.URL
+import java.util.concurrent.TimeoutException
 
 private const val TAG = "Uri Extensions"
 
@@ -146,18 +150,32 @@ fun Uri.loadUrl() : String {
  */
 fun URL.loadUrl() : String {
         Log.d(TAG, "About to read from Url")
-        return runBlocking(Dispatchers.IO) {
-            val job = async {
+        return runBlocking {
+            val deferred = async(Dispatchers.IO) {
                 openConnection().run {
                     this as HttpURLConnection
-                    val text = inputStream.bufferedReader().readText()
-                    inputStream.bufferedReader().close()
-                    inputStream.close()
-                    disconnect()
+                    var text = ""
+                    try {
+                        if (responseCode != HttpURLConnection.HTTP_OK) {
+                            throw IOException("Invalid response from server: $responseMessage")
+                        }
+                        text = inputStream.bufferedReader().readText()
+                    } finally {
+                        inputStream.bufferedReader().close()
+                        inputStream.close()
+                        disconnect()
+                    }
                     text
                 }
             }
-            val result = job.await()
+            /*
+            val job = launch(Dispatchers.IO) {
+                delay(6000)
+                throw TimeoutException("Timeout waiting for the server to respond")
+            }
+            job.cancelAndJoin()
+             */
+            val result = deferred.await()
             Log.d(TAG, "Result from Web: $result")
             result
         }
@@ -174,8 +192,8 @@ fun URL.loadUrl() : String {
 fun Uri.loadContent(context: Context) : String {
     if (scheme in arrayOf("content")) {
         val receiver = this
-        return runBlocking(Dispatchers.IO) {
-            async {
+        return runBlocking {
+            async(Dispatchers.IO) {
                 val ins: InputStream = context.contentResolver.openInputStream(receiver)!!
                 val reader = BufferedReader(InputStreamReader(ins, "utf-8"))
                 val text = reader.lines().reduce { s, t -> s + "\n" + t }
@@ -198,8 +216,8 @@ fun Uri.store(context: Context, text: String) {
 fun Uri.storeContent(context: Context, text: String) {
     if (scheme in arrayOf("content")) {
         val receiver = this
-        return runBlocking(Dispatchers.IO) {
-            launch {
+        return runBlocking {
+            launch(Dispatchers.IO) {
                 val outs: OutputStream = context.contentResolver.openOutputStream(receiver)!!
                 val writer = BufferedWriter(OutputStreamWriter(outs, "utf-8"))
                 writer.write(text)

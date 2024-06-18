@@ -339,8 +339,8 @@ open class Preferences(@ApplicationContext private val context: Context) {
      * All those methods work in an IO thread.
      */
     private fun getString(pref: String, default: String) : String {
-        return runBlocking(Dispatchers.IO) {
-            async {
+        return runBlocking {
+            async(Dispatchers.IO) {
                 val prefs = context.getSharedPreferences(PREFS_NAME, 0)
                 val value = prefs.getString(pref, default) ?: default
                 value
@@ -353,8 +353,8 @@ open class Preferences(@ApplicationContext private val context: Context) {
      * All those methods work in an IO thread.
      */
     private fun putString(pref: String, value: String) {
-        runBlocking(Dispatchers.IO) {
-            launch {
+        runBlocking {
+            launch(Dispatchers.IO) {
                 val prefs = context.getSharedPreferences(PREFS_NAME, 0).edit()
                 prefs.putString(pref, value)
                 prefs.apply()
@@ -367,8 +367,8 @@ open class Preferences(@ApplicationContext private val context: Context) {
      * All those methods work in an IO thread.
      */
     private fun remove(pref: String) {
-        runBlocking(Dispatchers.IO) {
-            launch {
+        runBlocking {
+            launch(Dispatchers.IO) {
                 val prefs = context.getSharedPreferences(PREFS_NAME, 0).edit()
                 prefs.remove(pref)
                 prefs.apply()
@@ -381,8 +381,8 @@ open class Preferences(@ApplicationContext private val context: Context) {
      * All those methods work in an IO thread.
      */
     private fun allKeys() : Set<String> {
-        return runBlocking(Dispatchers.IO) {
-            async {
+        return runBlocking {
+            async(Dispatchers.IO) {
                 val prefs = context.getSharedPreferences(PREFS_NAME, 0)
                 prefs.all.keys
             }.await()
@@ -390,8 +390,8 @@ open class Preferences(@ApplicationContext private val context: Context) {
     }
 
     private fun internalReset() {
-        runBlocking(Dispatchers.IO) {
-            launch {
+        runBlocking {
+            launch(Dispatchers.IO) {
                 val prefs = context.getSharedPreferences(PREFS_NAME, 0).edit()
                 prefs.clear()
                 prefs.apply()

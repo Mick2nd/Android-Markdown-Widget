@@ -2,27 +2,25 @@ package ch.tiim.markdown_widget
 
 import android.net.Uri
 import android.os.Bundle
-import android.os.Handler
-import android.os.Looper
 import android.util.Log
 import androidx.fragment.app.Fragment
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.view.accessibility.AccessibilityEvent
 import android.widget.EditText
 import android.widget.Toast
 import androidx.core.widget.addTextChangedListener
 import ch.tiim.markdown_widget.databinding.FragmentEditorBinding
 import dagger.hilt.android.AndroidEntryPoint
-import java.util.Timer
 import javax.inject.Inject
 
 private const val TAG = "EditorFragment"
+private const val CHARACTERS_PER_LINE = 4
 
 /**
- * A simple [Fragment] subclass.
- * Use the [EditorFragment.newInstance] factory method to
- * create an instance of this fragment.
+ * A [Fragment] serving as simple Editor for Markdown content. One of the pages on the Main Activity.
+ * Use the [EditorFragment.newInstance] factory method to create an instance of this fragment.
  */
 @AndroidEntryPoint
 class EditorFragment : Fragment() {
@@ -34,6 +32,9 @@ class EditorFragment : Fragment() {
     private var uri: Uri? = null
     private var appWidgetId: Int = 0
 
+    /**
+     * The [onCreate] override, reads the arguments.
+     */
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         arguments?.let {
@@ -42,6 +43,9 @@ class EditorFragment : Fragment() {
         }
     }
 
+    /**
+     * The [onCreateView] override, establishes the binding for the views.
+     */
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
@@ -52,18 +56,23 @@ class EditorFragment : Fragment() {
         return binding.root
     }
 
+    /**
+     * The [onViewCreated] override, performs final initialization: initial text content, button
+     * handlers, adaptation(synchronization) of the line numbers Edit Text.
+     */
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
         uri?.let {
-            binding.markdownEditText.setText(it.load(requireContext()))
+            binding.markdownEditText.setText(contentCache[it])
             binding.floatingActionButton.isEnabled = it.scheme == "content"
             adaptLineNumbers()
+            adaptSelection()
         }
         binding.floatingActionButton.setOnClickListener {
             uri?.let {
                 try {
-                    contentCache.store(it,binding.markdownEditText.text.toString())                 // to cache, disk
+                    contentCache.store(it, binding.markdownEditText.text.toString())                // to cache, disk
                     getUpdatePendingIntent(view.context, appWidgetId).send()                        // to widget
                     (activity as ChangeSignal).signal()                                             // to preview
                     Toast.makeText(
@@ -82,41 +91,51 @@ class EditorFragment : Fragment() {
         binding.markdownEditText.addTextChangedListener {
             _ ->
             adaptLineNumbers()
-            adaptSelection()
         }
         binding.markdownEditText.setOnScrollChangeListener {
             _, _, scrollY, _, _ ->
-            adaptSelection()
-            adaptVisibleArea()
+            binding.lineNumbersEditText.scrollY = scrollY
         }
-        binding.markdownEditText.setOnKeyListener { _, _, _ -> false }
+        binding.markdownEditText.accessibilityDelegate = object: View.AccessibilityDelegate() {
+            override fun sendAccessibilityEvent(host: View, eventType: Int) {
+                super.sendAccessibilityEvent(host, eventType)
+                if (eventType == AccessibilityEvent.TYPE_VIEW_TEXT_SELECTION_CHANGED) {
+                    adaptSelection()
+                }
+            }
+        }
     }
 
+    /**
+     * Adapts the displayed line numbers to the number of lines in text area.
+     */
     private fun adaptLineNumbers() {
-        val text = binding.markdownEditText.text.toString()
         val lineCount = binding.markdownEditText.getLineNumbers()
         val lineCountOld = binding.lineNumbersEditText.getLineNumbers()
         if (lineCount == lineCountOld) {
             return
         }
         val range = 1 .. lineCount
-        val lineNumbers = range.map { i -> i.toString().padStart(3, ' ') }.reduce() {
+        val lineNumbers = range.map { i -> i.toString().padStart(CHARACTERS_PER_LINE - 1, ' ') }.reduce() {
                 n1, n2 -> "$n1\n$n2"
         }
         binding.lineNumbersEditText.setText(lineNumbers)
     }
 
-    private fun adaptVisibleArea() {
-        binding.lineNumbersEditText.verticalScrollbarPosition = binding.markdownEditText.verticalScrollbarPosition
-    }
-
-    private fun adaptSelection() {
+    /**
+     * Adapts the position of cursor in the line numbers view to that of the text area (e.g. the
+     * line of the cursor)
+     */
+    private fun adaptSelection(line: Int = 0) {
         val pos = binding.markdownEditText.selectionStart
         val text = binding.markdownEditText.text.toString().substring(0, pos)
-        val line = text.count { c -> c == '\n' }
-        binding.lineNumbersEditText.setSelection(line * 4)
+        val target = if (line > 0) line else text.count { c -> c == '\n' }
+        binding.lineNumbersEditText.setSelection(target * CHARACTERS_PER_LINE)
     }
 
+    /**
+     * Determines and returns the number of lines in an [EditText] view.
+     */
     private fun EditText.getLineNumbers() : Int {
         val text = text.toString()
         val count = text.count { c -> c == '\n' } + 1
@@ -125,8 +144,8 @@ class EditorFragment : Fragment() {
 
     companion object {
         /**
-         * Use this factory method to create a new instance of
-         * this fragment using the provided parameters.
+         * Use this factory method to create a new instance of this fragment using the provided
+         * parameters.
          *
          * @return A new instance of fragment EditorFragment.
          */

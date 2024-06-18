@@ -14,7 +14,7 @@ import javax.inject.Inject
 private const val TAG = "PreviewFragment"
 
 /**
- * A simple [Fragment] subclass.
+ * A [Fragment] serving as Preview window for the rendered markdown.
  * Use the [PreviewFragment.newInstance] factory method to
  * create an instance of this fragment.
  */
@@ -28,10 +28,16 @@ class PreviewFragment : Fragment(), ChangeSignal {
     private var uri: Uri? = null
     private var appWidgetId: Int = 0
 
+    /**
+     * Init block.
+     */
     init {
         Log.i(TAG, "Init block")
     }
 
+    /**
+     * [onCreate] override. Used to read the arguments of this fragment.
+     */
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         Log.i(TAG, "onCreate")
@@ -41,22 +47,30 @@ class PreviewFragment : Fragment(), ChangeSignal {
         }
     }
 
+    /**
+     * [onCreateView] override. Used to bind the embedded views.
+     */
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
     ) : View {
         Log.i(TAG, "onCreateView")
-        // Inflate the layout for this fragment
         binding = FragmentPreviewBinding.inflate(inflater, container, false)
         return binding.root
     }
 
+    /**
+     * [onViewCreated] override. Performs initial display.
+     */
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         Log.i(TAG, "onViewCreated")
         show()
     }
 
+    /**
+     * [ChangeSignal] interface method. Used to update the Preview with new content.
+     */
     override fun signal() {
         if (uri == null) {
             return
@@ -65,6 +79,9 @@ class PreviewFragment : Fragment(), ChangeSignal {
         show()
     }
 
+    /**
+     * Shows the markdown content given by an Uri.
+     */
     private fun show() {
         val markdownFromWidget = uri?.let {
             contentCache[it]
@@ -77,10 +94,13 @@ class PreviewFragment : Fragment(), ChangeSignal {
         )
     }
 
+    /**
+     * Can be used to support arguments for this Preview [Fragment].
+     */
     companion object {
         /**
-         * Use this factory method to create a new instance of
-         * this fragment using the provided parameters.
+         * Use this factory method to create a new instance of this fragment using the provided
+         * parameters.
          *
          * @return A new instance of fragment PreviewFragment.
          */

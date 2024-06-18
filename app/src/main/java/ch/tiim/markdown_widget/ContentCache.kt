@@ -48,7 +48,7 @@ class ContentCacheImpl @Inject constructor(@ApplicationContext private val conte
     }
 
     /**
-     * Stores data string back to original source, also updating the cache
+     * Stores data string back to original source, also updating the cache.
      */
     override fun store(uri: Uri, value: String) {
         synchronized(this) {
@@ -67,7 +67,7 @@ class ContentCacheImpl @Inject constructor(@ApplicationContext private val conte
     }
 
     /**
-     * Invalidates the whole cache.
+     * Invalidates the whole cache (all Uris).
      */
     override fun invalidateAll() {
         for (uri in prefs.uris()) {
@@ -95,6 +95,9 @@ class ContentCacheImpl @Inject constructor(@ApplicationContext private val conte
     }
 }
 
+/**
+ * Interface for [ContentCacheImpl].
+ */
 interface ContentCache {
     /**
      * Loads data string given an uri. Either from Cache of (if not present) from the original

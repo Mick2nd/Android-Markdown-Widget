@@ -1,5 +1,6 @@
 package ch.tiim.markdown_widget
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Canvas
@@ -111,6 +112,7 @@ class MarkdownRenderer @Inject constructor(
      *
      * @param html html to be rendered. This will be injected into the complete html document *index.html*
      */
+    @SuppressLint("SetJavaScriptEnabled")
     fun prepareWebView(
         html: String
     ) {
@@ -166,7 +168,8 @@ class MarkdownRenderer @Inject constructor(
             it.clearHistory()
             it.clearCache(true)
             it.layout(0, 0, prefs[SCREEN_WIDTH, "1000"].toInt(), prefs[SCREEN_HEIGHT, "1000"].toInt())
-            it.addJavascriptInterface(JsObject(theme, html, prefs.zoom, widthRatio), "jsObject")
+            val preparedHtml = if (html != "") html else "<div style=\"color: red; font-size: 2em;\">No content to display!</div>"
+            it.addJavascriptInterface(JsObject(theme, preparedHtml, prefs.zoom, widthRatio), "jsObject")
             it.loadUrl("https://appassets.androidplatform.net/assets/index.html")
             Log.i(TAG, "WebView instance created and Html loaded: $html")
         }

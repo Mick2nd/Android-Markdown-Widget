@@ -92,7 +92,7 @@ class MarkdownFileWidget : AppWidgetProvider() {
      * @param appWidgetIds array of app widgets
      */
     override fun onDeleted(context: Context, appWidgetIds: IntArray) {
-        Log.i(TAG, "onDeleted invoked for  for ${appWidgetIds.toList()}")
+        Log.i(TAG, "onDeleted invoked for ${appWidgetIds.toList()}")
         for (appWidgetId in appWidgetIds) {
             prefs.delete(appWidgetId)
             cachedMarkdown.delete(appWidgetId)

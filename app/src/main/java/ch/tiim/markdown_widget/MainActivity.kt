@@ -9,7 +9,6 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.FragmentActivity
 import androidx.viewpager2.adapter.FragmentStateAdapter
-import androidx.viewpager2.widget.ViewPager2
 import ch.tiim.markdown_widget.databinding.ActivityMainBinding
 import com.google.android.material.tabs.TabLayout
 import com.google.android.material.tabs.TabLayoutMediator
@@ -23,7 +22,7 @@ const val ARG_APP_WIDGET_ID = "arg_app_widget_id"
 private const val TAG = "MainActivity"
 
 /**
- * The main activity invoked when app is invoked.
+ * The main activity invoked when app is invoked. It can also be invoked by clicking on a widget.
  */
 @AndroidEntryPoint
 class MainActivity : AppCompatActivity(), ChangeSignal {
@@ -44,9 +43,9 @@ class MainActivity : AppCompatActivity(), ChangeSignal {
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
-        // setContentView(R.layout.activity_main)
 
         // I check the Intent: if it was initiated by the Markdown Widget
+        // If so, start with the Edit fragment
         var uri: Uri? = null
         var appWidgetId = 0
         var start = 0
@@ -58,7 +57,7 @@ class MainActivity : AppCompatActivity(), ChangeSignal {
             }
         }
 
-        fragments = listOf(
+        fragments = listOf(                                                                         // initialize the fragments
             MainFragment(),
             ConfigureFragment(),
             EditorFragment.newInstance(uri, appWidgetId),
@@ -75,9 +74,13 @@ class MainActivity : AppCompatActivity(), ChangeSignal {
             tab.text = adapter.getTabTitle(position)
         }.attach()
 
-        permissionChecker.requestAccess(this)
+        permissionChecker.requestAccess(this)                                                // request the user for access to folder with userstyle.css
     }
 
+    /**
+     * Implements the ChangeSignal interface. The signal signals changes in the Editor fragment.
+     * This is used to propagate changes to the Preview fragment.
+     */
     override fun signal() {
         val idx = fragments.indexOfFirst { fragment -> fragment is ChangeSignal }
         binding.viewPager.setCurrentItem(idx, true)
@@ -110,6 +113,9 @@ class MainActivity : AppCompatActivity(), ChangeSignal {
     }
 }
 
+/**
+ * Interface to support change signals.
+ */
 interface ChangeSignal {
     fun signal()
 }

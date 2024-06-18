@@ -56,7 +56,8 @@ class ExternalStoragePathHandlerAlt @Inject constructor(
     private val prefs: Preferences) : WebViewAssetLoader.PathHandler {
 
     /**
-     * Implements the PathHandler interface
+     * Implements the PathHandler interface.
+     *
      * @param path file name of the intercepted file
      * @return a web resource response
      */
@@ -76,6 +77,7 @@ class ExternalStoragePathHandlerAlt @Inject constructor(
 
     /**
      * Intentionally opens and returns an Input Stream.
+     *
      * @param path the filename of the document to open
      * @return the opened Input Stream
      */

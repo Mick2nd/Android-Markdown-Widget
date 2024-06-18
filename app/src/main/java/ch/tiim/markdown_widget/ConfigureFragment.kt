@@ -19,9 +19,9 @@ private const val DEBUG = true
 private const val TAG = "ConfigureFragment"
 
 /**
- * A simple [Fragment] subclass.
- * Use the [ConfigureFragment.newInstance] factory method to
- * create an instance of this fragment.
+ * This fragment supports application wide settings and services. In Debug mode it enables the
+ * display of a markdown sample.
+ * Use the [ConfigureFragment.newInstance] factory method to create an instance of this fragment.
  */
 @AndroidEntryPoint
 class ConfigureFragment : Fragment() {
@@ -32,7 +32,7 @@ class ConfigureFragment : Fragment() {
     private lateinit var binding: FragmentConfigureBinding
 
     /**
-     * [onCreate] override. Used here to read sample parameters.
+     * [onCreate] override. Nothing special.
      */
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -48,8 +48,6 @@ class ConfigureFragment : Fragment() {
         container: ViewGroup?,
         savedInstanceState: Bundle?
     ) : View {
-        // Inflate the layout for this fragment
-        // return inflater.inflate(R.layout.fragment_configure, container, false)
         binding = FragmentConfigureBinding.inflate(inflater, container, false)
         return binding.root
     }
@@ -81,7 +79,7 @@ class ConfigureFragment : Fragment() {
             }
         }
 
-        binding.useUserStyle.let {
+        binding.useUserStyle.let {                                                       // TODO: propagate changes to Preview and Wídgets
             it.isChecked = prefs.useUserStyle
             it.setOnClickListener { _ ->
                 prefs.useUserStyle = it.isChecked
@@ -105,7 +103,7 @@ class ConfigureFragment : Fragment() {
             it.onItemSelectedListener = listener
         }
 
-        val (width, height) = getScreenSize()                                                       // this "settings" are used globally for DEBUG view
+        val (width, height) = getScreenSize()                                                       // these "settings" are used globally for DEBUG view
         prefs[SCREEN_WIDTH] = width.toString()                                                      // and all widgets
         prefs[SCREEN_HEIGHT] = height.toString()
 
@@ -216,29 +214,18 @@ class ConfigureFragment : Fragment() {
         }
     }
 
-    companion object {
-        /**
-         * Use this factory method to create a new instance of
-         * this fragment using the provided parameters.
-         *
-         * @return A new instance of fragment ConfigureFragment.
-         */
-        @JvmStatic
-        fun newInstance() =
-            ConfigureFragment().apply {
-        }
-    }
-
+    /**
+     * Zoom Spinner listener.
+     */
     private val listener = object : AdapterView.OnItemSelectedListener {
         /**
          *
-         * Callback method to be invoked when an item in this view has been
-         * selected. This callback is invoked only when the newly selected
-         * position is different from the previously selected position or if
-         * there was no selected item.
+         * Callback method to be invoked when an item in this view has been selected. This callback
+         * is invoked only when the newly selected position is different from the previously selected
+         * position or if there was no selected item.
          *
-         * Implementers can call getItemAtPosition(position) if they need to access the
-         * data associated with the selected item.
+         * Implementers can call getItemAtPosition(position) if they need to access the data
+         * associated with the selected item.
          *
          * @param parent The AdapterView where the selection happened
          * @param view The view within the AdapterView that was clicked
@@ -251,19 +238,34 @@ class ConfigureFragment : Fragment() {
             position: Int,
             id: Long
         ) {
-            prefs.zoom = ( parent?.selectedItem ?: "70" ).toString().toFloat() / 100f
+            prefs.zoom = ( parent?.selectedItem ?: "70" ).toString().toFloat() / 100f               // TODO: propagate ?
             displayOnDebug()
         }
 
         /**
-         * Callback method to be invoked when the selection disappears from this
-         * view. The selection can disappear for instance when touch is activated
-         * or when the adapter becomes empty.
+         * Callback method to be invoked when the selection disappears from this view. The selection
+         * can disappear for instance when touch is activated or when the adapter becomes empty.
          *
          * @param parent The AdapterView that now contains no selected item.
          */
         override fun onNothingSelected(parent: AdapterView<*>?) {
             // TODO("Not yet implemented")
         }
+    }
+
+    /**
+     * Can be used to support parameters.
+     */
+    companion object {
+        /**
+         * Use this factory method to create a new instance of this fragment using the provided
+         * parameters.
+         *
+         * @return A new instance of fragment ConfigureFragment.
+         */
+        @JvmStatic
+        fun newInstance() =
+            ConfigureFragment().apply {
+            }
     }
 }
