@@ -36,7 +36,7 @@ class MarkdownParser(private val theme:String) {
     val renderer: HtmlRenderer
 
     /**
-     * Init block
+     * Init block.
      */
     init {
         val options = MutableDataSet()
@@ -90,9 +90,10 @@ class MarkdownParser(private val theme:String) {
     }
 
     /**
-     * Responsible for changing $$ separators of math formulae into math fences block.
+     * Responsible for changing $$ separators of math formulae into math fences block. Also transforms
+     * inline $ separators.
      */
-    fun preParse(md: String): String {
+    private fun preParse(md: String): String {
         val begin = """([^$\\]|\\.)+"""
         val simple = parser { regex(begin) }
         val simpleEndingWithoutNl = parser { regex("""$begin([^$\\\n]|\\.)""") }

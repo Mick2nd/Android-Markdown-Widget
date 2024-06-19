@@ -15,13 +15,12 @@ private const val TAG = "Intercepted"
 private const val TAG2 = "Not Intercepted"
 
 /**
- * WebViewClient and WebViewClientCompat allowed as super class
- * Both of them work similar
+ * WebViewClient and WebViewClientCompat allowed as super class. Both of them work similar.
  */
 open class LocalContentWebViewClient(private val assetLoader: WebViewAssetLoader) : WebViewClient() {
 
     /**
-     * Performs interception of Web Urls given the supporting assetLoader
+     * Performs interception of Web Urls given the supporting assetLoader.
      */
     override fun shouldInterceptRequest(
         view: WebView,
@@ -34,9 +33,8 @@ open class LocalContentWebViewClient(private val assetLoader: WebViewAssetLoader
                     throw FileNotFoundException("${request.url}")
                 }
 
-                Log.d(TAG, "${request.url}")
-                Log.d(TAG, r.mimeType)
-                if (request.url.path == "/documents/userstyle.css") {
+                Log.d(TAG, "${request.url}, ${r.mimeType}")
+                if (request.url.path!!.endsWith("/userstyle.css")) {
                     Log.d(TAG, "User Style Probe: ${read(r.data!!)}")
                 }
                 return r
@@ -52,7 +50,7 @@ open class LocalContentWebViewClient(private val assetLoader: WebViewAssetLoader
     }
 
     /**
-     * Fun is intended to extract some content at the beginning of a stream
+     * Function is intended to extract some content at the beginning of a stream.
      */
     private fun read(stream: InputStream): String {
         if (!stream.markSupported()) {
@@ -61,7 +59,7 @@ open class LocalContentWebViewClient(private val assetLoader: WebViewAssetLoader
 
         stream.mark(0x10000)
         val r = BufferedReader(InputStreamReader(stream))
-        var x: String = ""
+        var x = ""
 
         for (c in 1 .. 5) {
             x += r.readLine()

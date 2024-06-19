@@ -18,6 +18,10 @@ import javax.inject.Singleton
 
 private const val TAG = "StoragePermissionChecker"
 
+/**
+ * Checks for and acquires user permission to an user provided folder. This folder is meant as the
+ * location where the *userstyle.css* file resides.
+ */
 @Singleton
 class StoragePermissionCheckerImpl @Inject constructor(
     @ApplicationContext private val context: Context,

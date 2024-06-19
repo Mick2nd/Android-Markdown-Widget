@@ -8,11 +8,13 @@ import android.provider.OpenableColumns
 import android.util.Log
 import androidx.core.net.toFile
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
-import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withContext
 import java.io.BufferedReader
 import java.io.BufferedWriter
 import java.io.File
@@ -24,7 +26,6 @@ import java.io.OutputStream
 import java.io.OutputStreamWriter
 import java.net.HttpURLConnection
 import java.net.URL
-import java.util.concurrent.TimeoutException
 
 private const val TAG = "Uri Extensions"
 
@@ -43,12 +44,10 @@ fun Uri.displayName(context: Context) : String? {
             this,
             arrayOf(OpenableColumns.DISPLAY_NAME),
             null, null, null)
-        try {
-            if (cursor != null && cursor.moveToFirst()) {
-                result = cursor.getString(0)
+        cursor.use { c ->
+            if (c != null && c.moveToFirst()) {
+                result = c.getString(0)
             }
-        } finally {
-            cursor?.close()
         }
     }
     return result
@@ -149,36 +148,48 @@ fun Uri.loadUrl() : String {
  * @throws FileNotFoundException
  */
 fun URL.loadUrl() : String {
-        Log.d(TAG, "About to read from Url")
-        return runBlocking {
-            val deferred = async(Dispatchers.IO) {
-                openConnection().run {
-                    this as HttpURLConnection
-                    var text = ""
-                    try {
-                        if (responseCode != HttpURLConnection.HTTP_OK) {
-                            throw IOException("Invalid response from server: $responseMessage")
-                        }
-                        text = inputStream.bufferedReader().readText()
-                    } finally {
-                        inputStream.bufferedReader().close()
-                        inputStream.close()
-                        disconnect()
-                    }
-                    text
-                }
+    Log.d(TAG, "About to read from Url")
+    val url = this
+    var result = ""
+    return runBlocking {
+        withContext(Dispatchers.IO) {
+            val parent = coroutineContext[Job]
+            val deferred = async {
+                val text = url.readSync()
+                text
             }
-            /*
-            val job = launch(Dispatchers.IO) {
-                delay(6000)
-                throw TimeoutException("Timeout waiting for the server to respond")
+            val job = launch {
+                delay(5000)
+                Log.w(TAG, "About to cancel")
+                parent?.cancel("Timeout")                                                   // TODO: does not work as expected, can hang in await
             }
-            job.cancelAndJoin()
-             */
-            val result = deferred.await()
-            Log.d(TAG, "Result from Web: $result")
-            result
+            result = deferred.await()
+            job.cancel("Data ready")
         }
+        Log.d(TAG, "Result from Web: $result")
+        result
+    }
+}
+
+/**
+ * Synchronous read from http server.
+ */
+private fun URL.readSync() : String {
+    return openConnection().run {
+        this as HttpURLConnection
+        val text: String
+        try {
+            if (responseCode != HttpURLConnection.HTTP_OK) {
+                throw IOException("Invalid response from server: $responseMessage")
+            }
+            text = inputStream.bufferedReader().readText()
+        } finally {
+            inputStream.bufferedReader().close()
+            inputStream.close()
+            disconnect()
+        }
+        text
+    }
 }
 
 /**

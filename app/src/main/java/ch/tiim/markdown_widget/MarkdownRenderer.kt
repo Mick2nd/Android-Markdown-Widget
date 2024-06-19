@@ -74,7 +74,7 @@ class MarkdownRenderer @Inject constructor(
     /**
      * Queries for the ready state of the rendering.
      */
-    fun isReady() : Boolean {
+    private fun isReady() : Boolean {
         return ready && webView!!.contentHeight != 0 && !fileChecker.stateChanged
     }
 
@@ -178,12 +178,12 @@ class MarkdownRenderer @Inject constructor(
     /**
      * Given the md string this parses it into a html string
      *
-     * @param data the md string
+     * @param markdown the md string
      * @return the ready to be used html string
      */
-    private fun getHtml(data: String): String {
+    private fun getHtml(markdown: String): String {
         val mdParser = MarkdownParser(theme)
-        return mdParser.parse(data)
+        return mdParser.parse(markdown)
     }
 
     /**
@@ -194,7 +194,7 @@ class MarkdownRenderer @Inject constructor(
      * @property zoom the zoom factor to apply (scale transform of web page)
      * @property widthRatio the width ratio to calculate the real width
      */
-    class JsObject (val theme: String, val html: String, val zoom: Float = 0.7f, val widthRatio: Float = 1.0f)
+    class JsObject (val theme: String, val html: String, val zoom: Float = 0.7f, private val widthRatio: Float = 1.0f)
     {
         /**
          * Used inside Js code to inject a theme string.

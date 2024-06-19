@@ -9,9 +9,8 @@ import javax.inject.Singleton
 private const val TAG = "FileServices"
 
 /**
- * This class is meant as checker for the *userstyle.css* file changes.
- * The check has the same relevance as the check of Markdown changes.
- * The location of this file is configured by the [uri].
+ * This class is meant as checker for the *userstyle.css* file changes. The check has the same
+ * relevance as the check of Markdown changes. The location of this file is configured by the [uri].
  *
  * @param context the context used to get a contentResolver
  * @param uri the complete Uri of the file to be checked

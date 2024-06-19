@@ -8,7 +8,6 @@ import android.content.Context
 import android.content.Intent
 import android.content.res.Configuration.ORIENTATION_PORTRAIT
 import android.content.res.Resources
-import android.net.Uri
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -17,14 +16,13 @@ import android.util.SparseArray
 import android.widget.RemoteViews
 import android.widget.Toast
 import dagger.hilt.android.AndroidEntryPoint
-import java.lang.reflect.InvocationTargetException
 import javax.inject.Inject
 
 private const val TAG = "MarkdownFileWidget"
 
 /**
  * Implementation of App Widget functionality.
- * App Widget Configuration implemented in [MarkdownFileWidgetConfigureActivity]
+ * App Widget Configuration implemented in [MarkdownFileWidgetConfigureActivity].
  */
 @AndroidEntryPoint
 class MarkdownFileWidget : AppWidgetProvider() {
@@ -39,16 +37,17 @@ class MarkdownFileWidget : AppWidgetProvider() {
     @Inject lateinit var contentCache: ContentCache
 
     /**
-     * Init block. Performs the injection.
+     * Init block.
      */
     init {
         Log.i(TAG, "Init block")
     }
 
     /**
-     * Updates all requested Widgets
+     * Updates all requested Widgets.
      *
      * @param context the [Context] instance
+     * @param appWidgetManager the [AppWidgetManager]
      * @param appWidgetIds array of requested widgets
      */
     override fun onUpdate(
@@ -63,7 +62,7 @@ class MarkdownFileWidget : AppWidgetProvider() {
     }
 
     /**
-     * Handles changed options, but especially View dimension changes
+     * Handles changed options, but especially View dimension changes.
      *
      * @param context the [Context] instance
      * @param appWidgetManager the [AppWidgetManager]
@@ -87,6 +86,7 @@ class MarkdownFileWidget : AppWidgetProvider() {
 
     /**
      * When the user deletes the widget, delete the preference associated with it.
+     * TODO: handle the [ContentCache] ?
      *
      * @param context the [Context] instance
      * @param appWidgetIds array of app widgets
@@ -151,9 +151,9 @@ class MarkdownFileWidget : AppWidgetProvider() {
     }
 
     /**
-     * Either instantiates a Renderer instance or extracts it from Cache.
-     * In either case the content of the Widget is drawn.
-     * Finally the given callback is invoked.
+     * Either instantiates a Renderer instance or extracts it from Cache. In either case the content
+     * of the Widget is drawn. Finally the given callback is invoked.
+     * New: supply the Uri to the renderer instance as trial to load required embedded web content.
      *
      * @param appWidgetId the Widget
      * @param checkForChange defines the relevance of the *needsUpdate* call
@@ -180,17 +180,17 @@ class MarkdownFileWidget : AppWidgetProvider() {
         if (md == null || (checkForChange && md.needsUpdate(s, widthRatio))) {
             md = MarkdownRenderer(context, s, widthRatio, cb)
             cachedMarkdown.put(appWidgetId, md)
-            Log.d(TAG, "New Renderer instance created ${md} from $fileUri: $s")
+            Log.d(TAG, "New Renderer instance created $md from $fileUri: $s")
         } else {
             md.refresh(cb)
             // NOT RELIABLE? - SEEMS TO BE RELIABLE AND FASTER
             // cb()
-            Log.d(TAG, "Cached Renderer instance used ${md} from $fileUri: $s")
+            Log.d(TAG, "Cached Renderer instance used $md from $fileUri: $s")
         }
     }
 
     /**
-     * Callback used by [loadRenderer]
+     * Callback used by [loadRenderer].
      */
     private fun loadRendererCb(
         context: Context,
@@ -208,13 +208,16 @@ class MarkdownFileWidget : AppWidgetProvider() {
         val views = RemoteViews(context.packageName, R.layout.markdown_file_widget)
 
         val handler = Handler(Looper.getMainLooper())
-        handler.post {
+        handler.post {                                                                              // maybe not required if cb runs on UI thread
             val bitmap = md.getBitmap(width, height)
             views.setImageViewBitmap(R.id.renderImg, bitmap)
             appWidgetManager.updateAppWidget(appWidgetId, views)
         }
     }
 
+    /**
+     * Registers 2 [PendingIntent]s for use by widget clicks.
+     */
     private fun registerPendingIntents(
         context: Context,
         appWidgetManager: AppWidgetManager,
@@ -235,7 +238,7 @@ class MarkdownFileWidget : AppWidgetProvider() {
     /**
      * Returns the Intent to be used to request the invocation of the Markdown editor.
      * Depends on the configured method during Widget creation.
-     * TODO: obsidian not reacting
+     * TODO: obsidian not reacting.
      *
      * @param appWidgetId the id of the App Widget initiating this request
      * @return pending intent
@@ -322,7 +325,7 @@ class WidgetSizeProvider(
 
     /**
      * This method calculates the ratio between widget width and screen width. This is used to
-     * perform widget updates in the index.html javascript.
+     * perform widget updates in the index.html's javascript.
      */
     fun getWidgetWidthRatio(widgetId: Int, prefs: Preferences) : Float {
         val manager = AppWidgetManager.getInstance(context)

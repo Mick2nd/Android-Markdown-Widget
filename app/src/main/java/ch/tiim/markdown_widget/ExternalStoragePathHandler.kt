@@ -8,7 +8,6 @@ import androidx.webkit.WebViewAssetLoader
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.File
 import java.io.InputStream
-import java.lang.Error
 import javax.inject.Inject
 import javax.inject.Named
 import javax.inject.Singleton
@@ -16,8 +15,9 @@ import javax.inject.Singleton
 private const val TAG = "ExternalStoragePathHandler"
 
 /**
- * TRIAL to use external (shared) storage for the userstyle.css file
- * SUCCEEDED
+ * Path Handler to use external (shared) storage for the userstyle.css file. This handler uses the
+ * application dependant external storage, commonly used with other applications.
+ *
  * @param context the context
  * @param subFolder here the sub folder of the files folder
  */
@@ -28,7 +28,8 @@ class ExternalStoragePathHandler @Inject constructor(
     ) : WebViewAssetLoader.PathHandler {
 
     /**
-     * Implements the PathHandler interface
+     * Implements the PathHandler interface.
+     *
      * @param path file name of the intercepted file
      * @return a web resource response
      */
@@ -47,8 +48,9 @@ class ExternalStoragePathHandler @Inject constructor(
 }
 
 /**
- * Goal of this class is to support access of WebView to files in SHARED EXTERNAL STORAGE
- * Implemented as SINGLETON
+ * Goal of this class is to support access of WebView to files in SHARED EXTERNAL STORAGE like the
+ * Documents folder.
+ * Implemented as SINGLETON.
  */
 @Singleton
 class ExternalStoragePathHandlerAlt @Inject constructor(

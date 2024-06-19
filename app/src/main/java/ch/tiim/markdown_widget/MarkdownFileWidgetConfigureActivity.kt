@@ -26,6 +26,7 @@ private const val TAG = "MarkdownFileWidgetConfigureActivity"
 
 /**
  * The configuration screen for the [MarkdownFileWidget] AppWidget.
+ * TODO: Log messages related to BAL HARDENING
  */
 @AndroidEntryPoint
 class MarkdownFileWidgetConfigureActivity @Inject constructor() : AppCompatActivity() {
@@ -38,6 +39,9 @@ class MarkdownFileWidgetConfigureActivity @Inject constructor() : AppCompatActiv
     private lateinit var binding: MarkdownFileWidgetConfigureBinding
     private lateinit var resultLauncher: ActivityResultLauncher<Intent>
 
+    /**
+     * Init block.
+     */
     init {
         Log.d(TAG, "Init block")
     }
@@ -76,6 +80,7 @@ class MarkdownFileWidgetConfigureActivity @Inject constructor() : AppCompatActiv
         radioGroup = binding.radiogroup
         binding.addButton.setOnClickListener(onAddWidget)
         binding.btnBrowse.setOnClickListener(onBrowse)
+
         // TODO: what is this?
         // binding.radioDefaultApp.isSelected = true
 
@@ -126,7 +131,7 @@ class MarkdownFileWidgetConfigureActivity @Inject constructor() : AppCompatActiv
      */
     private fun onActivityResult(result: ActivityResult) {
         if (result.resultCode == RESULT_OK && result.data?.data != null) {
-            val uri: Uri = result.data?.data!!;
+            val uri: Uri = result.data?.data!!
             contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
 
             val text = uri.toString()

@@ -45,6 +45,9 @@ open class Preferences(@ApplicationContext private val context: Context) {
         cache.clear()
     }
 
+    /**
+     * Resets the Preferences.
+     */
     fun reset() {
         synchronized(this) {
             clearCache()
@@ -53,7 +56,7 @@ open class Preferences(@ApplicationContext private val context: Context) {
     }
 
     /**
-     * Read "Global" preference
+     * Read "Global" preference.
      *
      * @param prefName the global preference name
      * @param default the default value
@@ -74,8 +77,8 @@ open class Preferences(@ApplicationContext private val context: Context) {
     }
 
     /**
-     * Read preference individual for given appWidgetId
-     * The global preference name will be calculated
+     * Read preference individual for given appWidgetId.
+     * The global preference name will be calculated.
      *
      * @param appWidgetId the id of the appwidget
      * @param prefName the "local" preference name
@@ -120,7 +123,7 @@ open class Preferences(@ApplicationContext private val context: Context) {
     fun userDocumentUriOf(path: String) : Uri = this[path]
 
     /**
-     * Write "Global" preference
+     * Write "Global" preference.
      *
      * @param prefName the global preference name
      * @param value the value to be written
@@ -136,8 +139,8 @@ open class Preferences(@ApplicationContext private val context: Context) {
     }
 
     /**
-     * Write preference individual for given appWidgetId
-     * The global preference name will be calculated
+     * Write preference individual for given appWidgetId.
+     * The global preference name will be calculated.
      *
      * @param appWidgetId the id of the app widget
      * @param prefName the "local" preference name
@@ -148,7 +151,7 @@ open class Preferences(@ApplicationContext private val context: Context) {
     }
 
     /**
-     * Used to store the md file's path given its [Uri]
+     * Used to store the md file's path given its [Uri].
      *
      * @param appWidgetId id of the app widget
      * @param uri [Uri] of the md file
@@ -246,14 +249,14 @@ open class Preferences(@ApplicationContext private val context: Context) {
                 context.contentResolver.releasePersistableUriPermission(it, Intent.FLAG_GRANT_READ_URI_PERMISSION)
             }
         }
-        catch(err: Exception) { }
+        catch(_: Throwable) { }
         delete(ENCODED_FOLDER_URI)
     }
 
     /**
      * Builds and returns a list of all Shared Preferences by key.
      */
-    fun keys(predicate: (String)->Boolean = { s -> true}) : List<String> {
+    fun keys(predicate: (String)->Boolean = { _ -> true}) : List<String> {
         return allKeys().filter { s -> predicate(s) }.map { it.substring(PREF_PREFIX_KEY.length) }
     }
 
@@ -319,7 +322,7 @@ open class Preferences(@ApplicationContext private val context: Context) {
     }
 
     /**
-     * Test - outputs the column names.
+     * Test - outputs the column names of a ContentResolver.
      */
     private fun test(uri: Uri) {
         val cursor = context.contentResolver.query(
@@ -389,6 +392,9 @@ open class Preferences(@ApplicationContext private val context: Context) {
         }
     }
 
+    /**
+     * Clears the whole preferences. Establishes a state like a complete new installation.
+     */
     private fun internalReset() {
         runBlocking {
             launch(Dispatchers.IO) {
