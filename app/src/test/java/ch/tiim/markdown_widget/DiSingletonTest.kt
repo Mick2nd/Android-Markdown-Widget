@@ -62,10 +62,11 @@ class DiSingletonTest {
     /**
      * It seems to be problematic to instantiate FileServices (fileChecker). A mocked provideUri
      * method did help.
+     * THIS IS NO LONGER A SINGLETON.
      */
     @Test
     fun fileCheckerSingleton_Ok() {
-        assertEquals(changeObserver1, changeObserver2)
+        assertNotSame(changeObserver1, changeObserver2)
     }
 
     @Test

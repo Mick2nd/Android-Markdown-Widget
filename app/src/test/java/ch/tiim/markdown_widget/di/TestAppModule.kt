@@ -24,9 +24,8 @@ import javax.inject.Singleton
 // )
 open class TestAppModule {
     @Provides
-    @Singleton
-    fun provideFileChecker(@ApplicationContext context: Context, @Named("GLOBAL") uri: Uri) : ChangeObserver {
-        return ChangeObserver(context, uri)
+    fun provideFileChecker(@ApplicationContext context: Context, @Named("GLOBAL") uri: Uri, preferences: Preferences) : ChangeObserver {
+        return ChangeObserver(context, uri, preferences)
     }
 
     @Provides
