@@ -33,7 +33,8 @@ open class LocalContentWebViewClient(private val assetLoader: WebViewAssetLoader
                     throw FileNotFoundException("${request.url}")
                 }
 
-                Log.d(TAG, "${request.url}, ${r.mimeType}")
+                // this log message no longer required
+                // Log.d(TAG, "${request.url}, ${r.mimeType}")
                 if (request.url.path!!.endsWith("/userstyle.css")) {
                     Log.d(TAG, "User Style Probe: ${read(r.data!!)}")
                 }
@@ -45,7 +46,7 @@ open class LocalContentWebViewClient(private val assetLoader: WebViewAssetLoader
             return null
         }
 
-        Log.d(TAG2, "${request.url}")
+        Log.w(TAG2, "${request.url}")
         return super.shouldInterceptRequest(view, request)
     }
 

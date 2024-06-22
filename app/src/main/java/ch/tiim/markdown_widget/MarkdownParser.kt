@@ -23,6 +23,9 @@ import com.vladsch.flexmark.parser.Parser
 import com.vladsch.flexmark.util.ast.Node
 import com.vladsch.flexmark.util.data.MutableDataSet
 import com.vladsch.flexmark.util.misc.Extension
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.runBlocking
 import org.jetbrains.annotations.NotNull
 
 private const val TAG = "MarkdownParser"
@@ -82,11 +85,15 @@ class MarkdownParser(private val theme:String) {
      */
     fun parse(md: String): String {
 
-        val document: Node = parser.parse(preParse(md))
-        val html = renderer.render(document)
-
-        Log.d(TAG, "Rendered MD: $html")
-        return html
+        return runBlocking() {
+            val deferred = async(Dispatchers.Default) {
+                // Log::class.thread(5)
+                val document: Node = parser.parse(preParse(md))
+                renderer.render(document)
+            }
+            deferred.await()
+        }
+        // Log.d(TAG, "Rendered MD: $html")
     }
 
     /**

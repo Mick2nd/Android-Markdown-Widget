@@ -7,7 +7,7 @@ import ch.tiim.markdown_widget.ContentCache
 import ch.tiim.markdown_widget.ContentCacheImpl
 import ch.tiim.markdown_widget.ExternalStoragePathHandler
 import ch.tiim.markdown_widget.ExternalStoragePathHandlerAlt
-import ch.tiim.markdown_widget.FileServices
+import ch.tiim.markdown_widget.ChangeObserver
 import ch.tiim.markdown_widget.Preferences
 import ch.tiim.markdown_widget.StoragePermissionChecker
 import ch.tiim.markdown_widget.StoragePermissionCheckerImpl
@@ -34,9 +34,8 @@ private const val TAG = "DAGGER_LOG"
 open class AppModule {
 
     @Provides
-    @Singleton
-    fun provideFileChecker(@ApplicationContext context: Context, @Named("GLOBAL") uri: Uri) : FileServices {
-        return FileServices(context, uri)
+    fun provideFileChecker(@ApplicationContext context: Context, @Named("GLOBAL") uri: Uri, preferences: Preferences) : ChangeObserver {
+        return ChangeObserver(context, uri, preferences)
     }
 
     @Provides

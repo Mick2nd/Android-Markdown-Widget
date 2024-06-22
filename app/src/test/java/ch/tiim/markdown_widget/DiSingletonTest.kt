@@ -33,8 +33,8 @@ class DiSingletonTest {
     @Inject lateinit var pathHandler2: ExternalStoragePathHandler
     @Inject lateinit var permissionChecker1: StoragePermissionChecker
     @Inject lateinit var permissionChecker2: StoragePermissionChecker
-    @Inject lateinit var fileServices1: FileServices
-    @Inject lateinit var fileServices2: FileServices
+    @Inject lateinit var changeObserver1: ChangeObserver
+    @Inject lateinit var changeObserver2: ChangeObserver
     @Inject @Named("GLOBAL") lateinit var uri1: Uri
     @Inject @Named("GLOBAL") lateinit var uri2: Uri
 
@@ -65,7 +65,7 @@ class DiSingletonTest {
      */
     @Test
     fun fileCheckerSingleton_Ok() {
-        assertEquals(fileServices1, fileServices2)
+        assertEquals(changeObserver1, changeObserver2)
     }
 
     @Test

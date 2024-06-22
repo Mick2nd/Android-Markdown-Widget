@@ -24,7 +24,7 @@ class HttpTest {
             ),
             arrayOf(
                 "https://raw.githubusercontent.com/Mick2nd/Code-Section/master/README.md",
-                "# Code Section Joplin Plugin"
+                "# Code Section Joplin Plug-in"
             )
         )
     }

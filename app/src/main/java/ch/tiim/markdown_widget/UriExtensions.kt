@@ -166,7 +166,7 @@ fun URL.loadUrl() : String {
             result = deferred.await()
             job.cancel("Data ready")
         }
-        Log.d(TAG, "Result from Web: $result")
+        Log.d(TAG, "Result from Web: ${result.begin()}")
         result
     }
 }

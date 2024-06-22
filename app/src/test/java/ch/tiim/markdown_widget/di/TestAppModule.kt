@@ -2,7 +2,7 @@ package ch.tiim.markdown_widget.di
 
 import android.content.Context
 import android.net.Uri
-import ch.tiim.markdown_widget.FileServices
+import ch.tiim.markdown_widget.ChangeObserver
 import ch.tiim.markdown_widget.Preferences
 import ch.tiim.markdown_widget.fakes.FakePreferences
 import ch.tiim.markdown_widget.fakes.SpyPreferences
@@ -25,8 +25,8 @@ import javax.inject.Singleton
 open class TestAppModule {
     @Provides
     @Singleton
-    fun provideFileChecker(@ApplicationContext context: Context, @Named("GLOBAL") uri: Uri) : FileServices {
-        return FileServices(context, uri)
+    fun provideFileChecker(@ApplicationContext context: Context, @Named("GLOBAL") uri: Uri) : ChangeObserver {
+        return ChangeObserver(context, uri)
     }
 
     @Provides

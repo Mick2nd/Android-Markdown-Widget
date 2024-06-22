@@ -4,7 +4,9 @@
     style="@style/Widget.MarkdownWidget.AppWidget.Container"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#ffffffff"
+    android:background="@drawable/app_widget_shape"
+    android:clipChildren="true"
+    android:clipToPadding="true"
     android:theme="@style/Theme.MarkdownWidget.AppWidgetContainer">
 
     <ImageView
@@ -12,7 +14,10 @@
         style="@style/Widget.MarkdownWidget.AppWidget.InnerView"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
+        android:background="@drawable/appwidget_preview"
         android:clickable="true"
+        android:contentDescription="@string/widget_content"
+        android:focusable="true"
         android:scaleType="fitXY"
         android:translationZ="1.0dp" />
 
@@ -21,10 +26,13 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_alignParentEnd="true"
-        android:layout_marginTop="5dp"
-        android:layout_marginEnd="5dp"
+        android:layout_marginTop="3dp"
+        android:layout_marginEnd="3dp"
         android:backgroundTint="#4CAF50"
         android:contentDescription="@string/refresh_the_widget"
+        android:scaleType="fitEnd"
+        android:scaleX="0.8"
+        android:scaleY="0.9"
         android:src="@android:drawable/ic_popup_sync"
         android:translationZ="2dp" />
 

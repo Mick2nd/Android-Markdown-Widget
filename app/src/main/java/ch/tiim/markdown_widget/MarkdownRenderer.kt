@@ -2,8 +2,10 @@ package ch.tiim.markdown_widget
 
 import android.annotation.SuppressLint
 import android.content.Context
+import android.content.res.Resources
 import android.graphics.Bitmap
 import android.graphics.Canvas
+import android.graphics.Color
 import android.os.Build
 import android.util.Log
 import android.webkit.JavascriptInterface
@@ -26,20 +28,23 @@ private const val TAG = "MarkdownRenderer"
  *
  * @param context the context
  * @param data the md string to be rendered
+ * @param widthRatio the ratio between widget width and screen width
  * @param onReady a callback to be invoked when [WebView] becomes ready
  */
 class MarkdownRenderer @Inject constructor(
     private val context: Context,
     private val data: String,
-    private val widthRatio: Float = 1.0f,
+    private var widthRatio: Float = 1.0f,
     private var onReady: (() -> Unit) = {  }
 ) {
     var webView: WebView? = null
 
-    @Inject lateinit var fileChecker: FileServices
+    @Inject lateinit var changeObserver: ChangeObserver
     @Inject lateinit var prefs: Preferences
     @Inject @Named("GLOBAL") lateinit var pathHandlerAlt: WebViewAssetLoader.PathHandler
     @Inject @Named("EXTERNAL") lateinit var pathHandler: WebViewAssetLoader.PathHandler
+
+    private var bitmap: Bitmap? = null
     private val theme = ""
     private var ready = false
     private var time: Long = 0
@@ -50,8 +55,9 @@ class MarkdownRenderer @Inject constructor(
      */
     init {
         EntryPoints.get(context.applicationContext, CustomEntryPoint::class.java).inject(this)
-        time = System.currentTimeMillis()
+        changeObserver.updateState(data, widthRatio)
 
+        time = System.currentTimeMillis()
         html = getHtml(data)
         val duration = System.currentTimeMillis() - time
         Log.d(TAG, "Duration of Html rendering: ${duration}ms")
@@ -61,7 +67,11 @@ class MarkdownRenderer @Inject constructor(
     /**
      * Refreshes the [WebView] inside an existing instance.
      */
-    fun refresh(onReady: (() -> Unit)) {
+    fun refresh(widthRatio: Float, onReady: (() -> Unit)) {
+        if (!isReady()) {
+            return
+        }
+        this.widthRatio = widthRatio
         this.onReady = onReady
         ready = false
         prepareWebView(html)
@@ -72,39 +82,38 @@ class MarkdownRenderer @Inject constructor(
     }
 
     /**
-     * Queries for the ready state of the rendering.
-     */
-    private fun isReady() : Boolean {
-        return ready && webView!!.contentHeight != 0 && !fileChecker.stateChanged
-    }
-
-    /**
      * Queries the [Bitmap] of the rendered markdown.
      */
     fun getBitmap(width: Int, height: Int): Bitmap {
         if (!isReady()) {
             Log.e(TAG, "WebView is not ready yet!")
+            return createDummy(width, height)
         }
 
-        Log.d(TAG, "Here in getBitmap")
-        val time = System.currentTimeMillis()
-        val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
-        val canvas = Canvas(bitmap)
-        webView!!.draw(canvas)
-        val duration = System.currentTimeMillis() - time
-        Log.i(TAG, "$bitmap, execution in ${duration}ms")
-        return bitmap
+        if (bitmap == null) {
+            bitmap = webView?.drawBitmap(width, height)
+        }
+        return bitmap!!.extractBitmap(0, 0, width, height)
+    }
+
+    /**
+     * Checks for markdown change.
+     *
+     * @param s a new md string
+     */
+    fun needsMarkdownUpdate(s: String) : Boolean {
+        return changeObserver.needsMarkdownUpdate(s)
     }
 
     /**
      * Queries if an update of a [MarkdownFileWidget] is required. This depends on the states of
      * the md string and the *userstyle.css* file.
      *
-     * @param s a new md string
+     * @param widthRatio a new ratio for widget width
      * @return flag indicating whether an update is required
      */
-    fun needsUpdate(s: String, widthRatio: Float) : Boolean {
-        return this.data != s || fileChecker.stateChanged || widthRatio != this.widthRatio
+    fun needsUpdate(widthRatio: Float) : Boolean {
+        return changeObserver.needsRefresh(widthRatio)
     }
 
     /**
@@ -117,7 +126,9 @@ class MarkdownRenderer @Inject constructor(
         html: String
     ) {
         time = System.currentTimeMillis()
+        // WebView.enableSlowWholeDocumentDraw()                                                    // ?
         webView = WebView(context)
+        bitmap = null                                                                               // as indication that it must be drawn
 
         /**
          * The Asset Loader implements an interception mechanism for web site content:
@@ -149,8 +160,6 @@ class MarkdownRenderer @Inject constructor(
 
                 override fun onPageFinished(view: WebView?, url: String?) {
                     super.onPageFinished(view, url)
-                    Log.d(TAG, "Markdown: $html")
-                    fileChecker.updateState()
 
                     val duration = System.currentTimeMillis() - time
                     Log.d(TAG, "Duration of Web Site display: ${duration}ms")
@@ -168,11 +177,71 @@ class MarkdownRenderer @Inject constructor(
             it.clearHistory()
             it.clearCache(true)
             it.layout(0, 0, prefs[SCREEN_WIDTH, "1000"].toInt(), prefs[SCREEN_HEIGHT, "1000"].toInt())
-            val preparedHtml = if (html != "") html else "<div style=\"color: red; font-size: 2em;\">No content to display!</div>"
+            val fallback = "<div style=\"color: red; font-size: 2em;\">No content to display!</div>"
+            val preparedHtml = if (html != "") html else fallback
             it.addJavascriptInterface(JsObject(theme, preparedHtml, prefs.zoom, widthRatio), "jsObject")
             it.loadUrl("https://appassets.androidplatform.net/assets/index.html")
-            Log.i(TAG, "WebView instance created and Html loaded: $html")
+            Log.i(TAG, "WebView instance created and Html loaded: ${html.begin()}")
         }
+    }
+
+    /**
+     * [toString] override with some special information.
+     */
+    override fun toString() : String {
+        val cls = super.toString().substringAfterLast('.')
+        return "$cls : md : ${data.substring(0, 20)}, html : ${html.substring(0, 20)}"
+    }
+
+    /**
+     * Queries for the ready state of the rendering.
+     */
+    private fun isReady() : Boolean {
+        return ready && webView != null && webView!!.contentHeight != 0
+    }
+
+    /**
+     * Draws a Bitmap from WebView content. The complete content is drawn, defined by contentHeight.
+     */
+    private fun WebView.drawBitmap(width: Int, height: Int) : Bitmap {
+        val time = System.currentTimeMillis()
+        val contentHeightPixels = (contentHeight * Resources.getSystem().displayMetrics.density).toInt()
+        val bitmap = Bitmap.createBitmap(width, contentHeightPixels, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(bitmap)
+        draw(canvas)
+        val duration = System.currentTimeMillis() - time
+        Log.i(TAG, "$bitmap $width x $contentHeightPixels, execution in ${duration}ms")
+
+        return bitmap
+    }
+
+    /**
+     * Creates a dummy if the WebView is not ready yet.
+     */
+    private fun createDummy(width: Int, height: Int) : Bitmap {
+        val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(bitmap)
+        canvas.drawColor(Color.YELLOW)
+        return bitmap
+    }
+
+    /**
+     * Extracts a part of a greater Bitmap.
+     * Usage Recipe:
+     * - build a greater Bitmap, a part of which is to be extracted.
+     * - define location and part
+     */
+    private fun Bitmap.extractBitmap(x: Int, y: Int, width: Int, height: Int): Bitmap {
+        val wl = width.coerceIn(0, this.width)
+        val hl = height.coerceIn(0, this.height)
+        val xl = x.coerceIn(0, this.width - wl)
+        val yl = y.coerceIn(0, this.height - hl)
+
+        val newBitmap = Bitmap.createBitmap(wl, hl, Bitmap.Config.ARGB_8888)        // Create a same size Bitmap
+        val pixels = IntArray(wl * hl)
+        getPixels(pixels, 0, wl, xl, yl, wl, hl)
+        newBitmap.setPixels(pixels, 0, wl, 0, 0, wl, hl)
+        return newBitmap
     }
 
     /**
@@ -187,7 +256,7 @@ class MarkdownRenderer @Inject constructor(
     }
 
     /**
-     * This object allows injection of information into the index.html file as js object
+     * This object allows injection of information into the index.html file as js object.
      *
      * @property theme a theme string
      * @property html the html created from markdown
@@ -228,13 +297,4 @@ class MarkdownRenderer @Inject constructor(
             return widthRatio
         }
     }
-}
-
-/**
-* Executes the given [block] and returns elapsed time in milliseconds.
-*/
-inline fun measureTimeMillis(block: () -> Unit): Long {
-    val start = System.currentTimeMillis()
-    block()
-    return System.currentTimeMillis() - start
 }

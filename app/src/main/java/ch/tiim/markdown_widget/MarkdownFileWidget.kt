@@ -77,7 +77,8 @@ class MarkdownFileWidget : AppWidgetProvider() {
     ) {
         Log.i(TAG, "onAppWidgetOptionsChanged invoked on ${context.applicationContext} for $appWidgetId")
         if (appWidgetManager != null) {
-            loadRenderer(context, appWidgetId, true) {
+            registerPendingIntents(context, appWidgetManager, appWidgetId)
+            loadRenderer(context, appWidgetId) {
                 loadRendererCb(context, appWidgetManager, appWidgetId)
                 Log.d(TAG, "Update after Options Changed")
             }
@@ -142,11 +143,10 @@ class MarkdownFileWidget : AppWidgetProvider() {
         appWidgetManager: AppWidgetManager,
         appWidgetId: Int
     ) {
-        loadRenderer(context, appWidgetId, true) {
+        registerPendingIntents(context, appWidgetManager, appWidgetId)
+        loadRenderer(context, appWidgetId) {
             loadRendererCb(context, appWidgetManager, appWidgetId)
             Log.d(TAG, "Update after Update Request")
-
-            registerPendingIntents(context, appWidgetManager, appWidgetId)
         }
     }
 
@@ -156,10 +156,9 @@ class MarkdownFileWidget : AppWidgetProvider() {
      * New: supply the Uri to the renderer instance as trial to load required embedded web content.
      *
      * @param appWidgetId the Widget
-     * @param checkForChange defines the relevance of the *needsUpdate* call
      * @param cb the callback to be invoked
      */
-    private fun loadRenderer(context: Context, appWidgetId: Int, checkForChange: Boolean, cb: (()->Unit)) {
+    private fun loadRenderer(context: Context, appWidgetId: Int, cb: (()->Unit)) {
         val fileUri = prefs.markdownUriOf(appWidgetId)
         if (fileUri.scheme == null) {
             Log.i(TAG, "Invoked Markdown Widget with empty Uri, probably first time call.")
@@ -174,18 +173,22 @@ class MarkdownFileWidget : AppWidgetProvider() {
             Toast.makeText(context, msg, Toast.LENGTH_LONG).show()
         }
 
+        /*
+         * The following code section tries to optimize the time used by the widget update.
+         */
         val widgetSizeProvider = WidgetSizeProvider(context)
         val widthRatio = widgetSizeProvider.getWidgetWidthRatio(appWidgetId, prefs)
         var md = cachedMarkdown[appWidgetId]
-        if (md == null || (checkForChange && md.needsUpdate(s, widthRatio))) {
+        if (md == null || md.needsMarkdownUpdate(s)) {
             md = MarkdownRenderer(context, s, widthRatio, cb)
             cachedMarkdown.put(appWidgetId, md)
-            Log.d(TAG, "New Renderer instance created $md from $fileUri: $s")
+            Log.d(TAG, "Renderer created: $md for $fileUri")
+        } else if (md.needsUpdate(widthRatio)) {
+            md.refresh(widthRatio, cb)
+            Log.d(TAG, "Renderer refreshed $md for $fileUri")
         } else {
-            md.refresh(cb)
-            // NOT RELIABLE? - SEEMS TO BE RELIABLE AND FASTER
-            // cb()
-            Log.d(TAG, "Cached Renderer instance used $md from $fileUri: $s")
+            cb()
+            Log.d(TAG, "Bitmap extracted from $md for $fileUri")
         }
     }
 
@@ -292,54 +295,4 @@ fun getUpdatePendingIntent(context: Context, appWidgetId: Int): PendingIntent {
     )
     Log.d(TAG, "Intent assembled: ${intentUpdate.resolveActivity(context.packageManager)}, data : ${intentUpdate.data}, extras: ${intentUpdate.extras}")
     return pendingUpdate
-}
-
-/**
- * Extracts Dimensions of Widget in pixels. As a recherche in the Internet yielded, multiplication
- * by *density* transforms dp into px,
- * @see <a href="https://stackoverflow.com/questions/76087269/why-displaymetrics-density-is-wrong">
- *     Stackoverflow</a> .
- */
-class WidgetSizeProvider(
-    private val context: Context // Do not pass Application context
-) {
-    /**
-     * Returns Dimensions of Widget as stored in the options.
-     *
-     * @param widgetId the id of the widget
-     * @return Dimensions in Pixels
-     */
-    fun getWidgetsSize(widgetId: Int): Pair<Int, Int> {
-        val manager = AppWidgetManager.getInstance(context)
-        val isPortrait = context.resources.configuration.orientation == ORIENTATION_PORTRAIT
-        val (width, height) = listOf(
-            if (isPortrait) AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH
-            else AppWidgetManager.OPTION_APPWIDGET_MAX_WIDTH,
-            if (isPortrait) AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT
-            else AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT
-        ).map { manager.getAppWidgetOptions(widgetId).getInt(it, 100).dp.toInt() }
-
-        Log.d(TAG, "Device size: $width $height")
-        return width to height
-    }
-
-    /**
-     * This method calculates the ratio between widget width and screen width. This is used to
-     * perform widget updates in the index.html's javascript.
-     */
-    fun getWidgetWidthRatio(widgetId: Int, prefs: Preferences) : Float {
-        val manager = AppWidgetManager.getInstance(context)
-        val isPortrait = context.resources.configuration.orientation == ORIENTATION_PORTRAIT
-        val widthSetting =
-            if (isPortrait) AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH
-            else AppWidgetManager.OPTION_APPWIDGET_MAX_WIDTH
-
-        val width = manager.getAppWidgetOptions(widgetId).getInt(widthSetting, -1).toFloat()
-        val screenWidth = prefs[SCREEN_WIDTH, "1000"].toFloat()
-        val result = (if (width > 0) width / screenWidth  else 0.9f).dp
-        Log.d(TAG, "Calculated width ratio: $result, Screen width: $screenWidth")
-        return result
-    }
-
-    private val Number.dp: Float get() = this.toFloat() * Resources.getSystem().displayMetrics.density
 }

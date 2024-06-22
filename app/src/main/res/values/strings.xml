@@ -5,7 +5,7 @@
     <string name="appwidget_text">EXAMPLE</string>
     <string name="configure_widget">Configure Widget</string>
     <string name="add_widget">Add widget</string>
-    <string name="app_widget_description">This is an app widget description</string>
+    <string name="app_widget_description">An app widget displaying a markdown file as rendered image</string>
     <string name="rendered_markdown_content">Rendered Markdown Content</string>
     <string name="display_markdown">Image where to display markdown</string>
     <string name="revoke_permissions">Revoke Permissions</string>
@@ -19,4 +19,5 @@
     <string name="refresh_the_widget">Refresh the widget</string>
     <string name="stores_the_changes">Stores the changes and updates the widget</string>
     <string name="editor_area">Editor area</string>
+    <string name="widget_content">The content of the widget</string>
 </resources>

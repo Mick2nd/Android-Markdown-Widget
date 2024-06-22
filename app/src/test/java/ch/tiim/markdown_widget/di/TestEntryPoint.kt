@@ -2,7 +2,7 @@ package ch.tiim.markdown_widget.di
 
 import ch.tiim.markdown_widget.DiSingletonTest
 import ch.tiim.markdown_widget.ExternalStoragePathHandler
-import ch.tiim.markdown_widget.FileServices
+import ch.tiim.markdown_widget.ChangeObserver
 import ch.tiim.markdown_widget.Preferences
 import ch.tiim.markdown_widget.StoragePermissionChecker
 import dagger.hilt.EntryPoint
@@ -28,5 +28,5 @@ interface TestEntryPoint {
     fun storagePermissionChecker() : StoragePermissionChecker
 
     @Singleton
-    fun fileChecker() : FileServices
+    fun fileChecker() : ChangeObserver
 }
