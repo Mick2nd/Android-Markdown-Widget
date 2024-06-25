@@ -7,11 +7,14 @@ import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
 import android.os.Build
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import android.webkit.JavascriptInterface
 import android.webkit.WebSettings.LOAD_NO_CACHE
 import android.webkit.WebView
 import android.webkit.WebView.RENDERER_PRIORITY_BOUND
+import androidx.core.graphics.get
 import androidx.webkit.WebViewAssetLoader
 import androidx.webkit.WebViewAssetLoader.AssetsPathHandler
 import androidx.webkit.WebViewAssetLoader.InternalStoragePathHandler
@@ -91,9 +94,9 @@ class MarkdownRenderer @Inject constructor(
         }
 
         if (bitmap == null) {
-            bitmap = webView?.drawBitmap(width, height)
+            bitmap = webView?.drawBitmap(width, height)                                             // defines its own height for the whole area
         }
-        return bitmap!!.extractBitmap(0, 0, width, height)
+        return bitmap!!                 //.extractBitmap(0, 0, width, height)
     }
 
     /**
@@ -126,7 +129,7 @@ class MarkdownRenderer @Inject constructor(
         html: String
     ) {
         time = System.currentTimeMillis()
-        // WebView.enableSlowWholeDocumentDraw()                                                    // ?
+        WebView.enableSlowWholeDocumentDraw()                                                       // ?
         webView = WebView(context)
         bitmap = null                                                                               // as indication that it must be drawn
 
@@ -163,6 +166,9 @@ class MarkdownRenderer @Inject constructor(
 
                     val duration = System.currentTimeMillis() - time
                     Log.d(TAG, "Duration of Web Site display: ${duration}ms")
+                    it.evaluateJavascript("document.body.scrollHeight") {
+                        Log.i(TAG,"ScrollHeight is: ${it.toInt()} / ${webView!!.contentHeight}")
+                    }
                     ready = true
                     onReady()
                 }
@@ -205,12 +211,20 @@ class MarkdownRenderer @Inject constructor(
      */
     private fun WebView.drawBitmap(width: Int, height: Int) : Bitmap {
         val time = System.currentTimeMillis()
-        val contentHeightPixels = (contentHeight * Resources.getSystem().displayMetrics.density).toInt()
-        val bitmap = Bitmap.createBitmap(width, contentHeightPixels, Bitmap.Config.ARGB_8888)
+        val referenceHeight = (contentHeight.toFloat() * Resources.getSystem().displayMetrics.density).toInt()
+        val heightLimit = 14_385_000 / 4 / width
+        val targetHeight = minOf(referenceHeight + 200, heightLimit)
+
+        var bitmap = Bitmap.createBitmap(width, targetHeight, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bitmap)
         draw(canvas)
+
+        val lastPixel = bitmap[bitmap.width - 1, bitmap.height - 1]
+        val (x, y) = bitmap.indexOf { pixel -> pixel != lastPixel }
+        bitmap = bitmap.extractBitmap(0, 0, width, maxOf(y + 20, height))
+
         val duration = System.currentTimeMillis() - time
-        Log.i(TAG, "$bitmap $width x $contentHeightPixels, execution in ${duration}ms")
+        Log.i(TAG, "${bitmap.toStringAlt()}, execution in ${duration}ms")
 
         return bitmap
     }
@@ -223,25 +237,6 @@ class MarkdownRenderer @Inject constructor(
         val canvas = Canvas(bitmap)
         canvas.drawColor(Color.YELLOW)
         return bitmap
-    }
-
-    /**
-     * Extracts a part of a greater Bitmap.
-     * Usage Recipe:
-     * - build a greater Bitmap, a part of which is to be extracted.
-     * - define location and part
-     */
-    private fun Bitmap.extractBitmap(x: Int, y: Int, width: Int, height: Int): Bitmap {
-        val wl = width.coerceIn(0, this.width)
-        val hl = height.coerceIn(0, this.height)
-        val xl = x.coerceIn(0, this.width - wl)
-        val yl = y.coerceIn(0, this.height - hl)
-
-        val newBitmap = Bitmap.createBitmap(wl, hl, Bitmap.Config.ARGB_8888)        // Create a same size Bitmap
-        val pixels = IntArray(wl * hl)
-        getPixels(pixels, 0, wl, xl, yl, wl, hl)
-        newBitmap.setPixels(pixels, 0, wl, 0, 0, wl, hl)
-        return newBitmap
     }
 
     /**

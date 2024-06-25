@@ -4,25 +4,6 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.INTERNET" />
 
-    <!--
-    <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" />
-    <queries>
-        <package android:name="ch.tiim.markdown_widget" />
-        <intent>
-            <action android:name="android.intent.action.EDIT" />
-            <data android:mimeType="text/plain" />
-        </intent>
-    </queries>
-
-    <queries>
-        <intent>
-            <action android:name="android.intent.action.EDIT" />
-            <category android:name="android.intent.category.DEFAULT" />
-            <data android:mimeType="text/plain" />
-        </intent>
-    </queries>
-    -->
-
     <application
         android:name=".Main"
         android:allowBackup="true"
@@ -70,6 +51,10 @@
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
         </activity>
-    </application>
 
+        <service
+            android:name=".MarkdownWidgetService"
+            android:permission="android.permission.BIND_REMOTEVIEWS" />
+
+    </application>
 </manifest>

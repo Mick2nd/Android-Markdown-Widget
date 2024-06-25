@@ -9,7 +9,7 @@
     android:clipToPadding="true"
     android:theme="@style/Theme.MarkdownWidget.AppWidgetContainer">
 
-    <ImageView
+    <ListView
         android:id="@+id/renderImg"
         style="@style/Widget.MarkdownWidget.AppWidget.InnerView"
         android:layout_width="match_parent"
@@ -17,9 +17,14 @@
         android:background="@drawable/appwidget_preview"
         android:clickable="true"
         android:contentDescription="@string/widget_content"
+        android:divider="@null"
+        android:dividerHeight="0dp"
         android:focusable="true"
         android:scaleType="fitXY"
-        android:translationZ="1.0dp" />
+        android:translationZ="1.0dp"
+        tools:listitem="@layout/widget_item">
+
+    </ListView>
 
     <ImageButton
         android:id="@+id/refreshImageButton"
@@ -35,5 +40,10 @@
         android:scaleY="0.9"
         android:src="@android:drawable/ic_popup_sync"
         android:translationZ="2dp" />
+
+    <ImageView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:id="@+id/emptyView" />
 
 </RelativeLayout>

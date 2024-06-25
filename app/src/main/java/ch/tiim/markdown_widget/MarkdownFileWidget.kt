@@ -6,16 +6,20 @@ import android.appwidget.AppWidgetProvider
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
-import android.content.res.Configuration.ORIENTATION_PORTRAIT
-import android.content.res.Resources
+import android.graphics.Bitmap
+import android.net.Uri
+import android.os.Build
 import android.os.Bundle
-import android.os.Handler
-import android.os.Looper
 import android.util.Log
 import android.util.SparseArray
 import android.widget.RemoteViews
+import android.widget.RemoteViewsService
 import android.widget.Toast
+import androidx.annotation.RequiresApi
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import javax.inject.Inject
 
 private const val TAG = "MarkdownFileWidget"
@@ -31,7 +35,7 @@ class MarkdownFileWidget : AppWidgetProvider() {
     }
 
     /**
-     * Preferences injected in this central location.
+     * Preferences, ContentCache injected in this central location.
      */
     @Inject lateinit var prefs: Preferences
     @Inject lateinit var contentCache: ContentCache
@@ -75,11 +79,12 @@ class MarkdownFileWidget : AppWidgetProvider() {
         appWidgetId: Int,
         newOptions: Bundle?
     ) {
-        Log.i(TAG, "onAppWidgetOptionsChanged invoked on ${context.applicationContext} for $appWidgetId")
+        Log.i(TAG,"onAppWidgetOptionsChanged invoked on ${context.applicationContext} for $appWidgetId"
+        )
         if (appWidgetManager != null) {
             registerPendingIntents(context, appWidgetManager, appWidgetId)
             loadRenderer(context, appWidgetId) {
-                loadRendererCb(context, appWidgetManager, appWidgetId)
+                loadRendererCb(context, appWidgetId)
                 Log.d(TAG, "Update after Options Changed")
             }
         }
@@ -145,7 +150,7 @@ class MarkdownFileWidget : AppWidgetProvider() {
     ) {
         registerPendingIntents(context, appWidgetManager, appWidgetId)
         loadRenderer(context, appWidgetId) {
-            loadRendererCb(context, appWidgetManager, appWidgetId)
+            loadRendererCb(context, appWidgetId)
             Log.d(TAG, "Update after Update Request")
         }
     }
@@ -158,7 +163,7 @@ class MarkdownFileWidget : AppWidgetProvider() {
      * @param appWidgetId the Widget
      * @param cb the callback to be invoked
      */
-    private fun loadRenderer(context: Context, appWidgetId: Int, cb: (()->Unit)) {
+    private fun loadRenderer(context: Context, appWidgetId: Int, cb: (() -> Unit)) {
         val fileUri = prefs.markdownUriOf(appWidgetId)
         if (fileUri.scheme == null) {
             Log.i(TAG, "Invoked Markdown Widget with empty Uri, probably first time call.")
@@ -167,7 +172,7 @@ class MarkdownFileWidget : AppWidgetProvider() {
         var s = ""
         try {
             s = contentCache[fileUri]                       // throws
-        } catch(err: Throwable) {
+        } catch (err: Throwable) {
             val msg = "Could not load md file: $err"
             Log.e(TAG, msg)
             Toast.makeText(context, msg, Toast.LENGTH_LONG).show()
@@ -197,7 +202,6 @@ class MarkdownFileWidget : AppWidgetProvider() {
      */
     private fun loadRendererCb(
         context: Context,
-        appWidgetManager: AppWidgetManager,
         appWidgetId: Int
     ) {
         val md = cachedMarkdown[appWidgetId]
@@ -208,18 +212,12 @@ class MarkdownFileWidget : AppWidgetProvider() {
 
         val size = WidgetSizeProvider(context)
         val (width, height) = size.getWidgetsSize(appWidgetId)
-        val views = RemoteViews(context.packageName, R.layout.markdown_file_widget)
-
-        val handler = Handler(Looper.getMainLooper())
-        handler.post {                                                                              // maybe not required if cb runs on UI thread
-            val bitmap = md.getBitmap(width, height)
-            views.setImageViewBitmap(R.id.renderImg, bitmap)
-            appWidgetManager.updateAppWidget(appWidgetId, views)
-        }
+        val bitmap = md.getBitmap(width, height)
+        registerRemoteAdapter(context, appWidgetId, bitmap)
     }
 
     /**
-     * Registers 2 [PendingIntent]s for use by widget clicks.
+     * Registers 1 [PendingIntent] for use by widget clicks, namely Update Broadcast event.
      */
     private fun registerPendingIntents(
         context: Context,
@@ -228,10 +226,6 @@ class MarkdownFileWidget : AppWidgetProvider() {
     ) {
         val views = RemoteViews(context.packageName, R.layout.markdown_file_widget)
         views.setOnClickPendingIntent(
-            R.id.renderImg,
-            getIntent(context, appWidgetId)
-        )
-        views.setOnClickPendingIntent(
             R.id.refreshImageButton,
             getUpdatePendingIntent(context, appWidgetId)
         )
@@ -239,40 +233,234 @@ class MarkdownFileWidget : AppWidgetProvider() {
     }
 
     /**
-     * Returns the Intent to be used to request the invocation of the Markdown editor.
-     * Depends on the configured method during Widget creation.
-     * TODO: obsidian not reacting.
+     * Registers the Remote Adapter, responsible for display of ListView contents.
      *
-     * @param appWidgetId the id of the App Widget initiating this request
-     * @return pending intent
+     * @param bitmap the [Bitmap], representing the rendered markdown, to be displayed.
      */
-    private fun getIntent(context: Context, appWidgetId: Int): PendingIntent? {
-
-        val uri = prefs.markdownUriOf(appWidgetId)
-        val tapBehavior = prefs[appWidgetId, PREF_BEHAVIOUR, TAP_BEHAVIOUR_DEFAULT_APP]
-
-        val flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
-        val pendingFlags = PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
-
-        val intent = Intent(Intent.ACTION_EDIT).apply {
-            this.flags = flags
+    private fun registerRemoteAdapter(context: Context, appWidgetId: Int, bitmap: Bitmap) {
+        val appWidgetManager = AppWidgetManager.getInstance(context)
+        val intent = Intent(context, MarkdownWidgetService::class.java).apply {
             putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId)
+            putExtras(bitmap.toBundleMeta())
+            data = Uri.parse(toUri(Intent.URI_INTENT_SCHEME))
+        }
 
-            when (tapBehavior) {
-                TAP_BEHAVIOUR_DEFAULT_APP -> setDataAndType(uri.normalizeScheme(), "text/plain")
-                TAP_BEHAVIOUR_OBSIDIAN -> data = uri.toObsidian(context)
-                TAP_BEHAVIOUR_ITSELF -> {
-                    setComponent(ComponentName(context.packageName, MainActivity::class.qualifiedName!!))
-                    setDataAndType(uri.normalizeScheme(), "text/plain")
+        val remoteViews = RemoteViews(context.packageName, R.layout.markdown_file_widget).apply {
+            setRemoteAdapter(R.id.renderImg, intent)
+            setEmptyView(R.id.renderImg, R.id.emptyView)
+
+            setPendingIntentTemplate(
+                R.id.renderImg,
+                prefs.getEditPendingIntent(context, appWidgetId)
+            )
+        }
+
+        // Instruct the widget manager to update the widget
+        appWidgetManager.updateAppWidget(appWidgetId, remoteViews)
+    }
+}
+
+/**
+ * The service responsible for the display.
+ */
+@AndroidEntryPoint
+class MarkdownWidgetService : RemoteViewsService() {
+    @Inject lateinit var prefs: Preferences
+
+    override fun onGetViewFactory(intent: Intent): RemoteViewsFactory {
+        Log.i(TAG, "MarkdownWidgetService::onGetViewFactory")
+        val appWidgetId = intent.getIntExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, -1)
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            MarkdownRemoteViewsFactory(applicationContext, appWidgetId)
+        } else {
+            MarkdownRemoteViewsFactory(applicationContext, appWidgetId)
+        }
+    }
+
+    /**
+     * Remote Views Factory, used by the Service.
+     */
+    internal inner class MarkdownRemoteViewsFactory(private val context: Context, private val appWidgetId: Int) :
+        MarkdownRemoteViewsFactoryBase(context, appWidgetId) {
+
+        /**
+         * No idea if the Annotation is sufficient to warrant compatibility with older versions.
+         */
+        @RequiresApi(Build.VERSION_CODES.S)
+        override fun getLoadingView(): RemoteViews {
+            return RemoteViews(context.packageName, R.layout.markdown_file_widget, R.id.emptyView)
+        }
+
+        /**
+         * TODO: What should the Item Id represent?
+         */
+        @RequiresApi(Build.VERSION_CODES.S)
+        override fun getItemId(position: Int): Long {
+            Log.i(TAG, "MarkdownRemoteViewsFactory::getItemId")
+            return id * 10 + position // (getViewAt(position).viewId).toLong()
+        }
+    }
+
+    /**
+     * Abstract Base class containing a large part of the functionality.
+     */
+    internal abstract inner class MarkdownRemoteViewsFactoryBase(private val context: Context, private val appWidgetId: Int
+    ) : RemoteViewsFactory {
+        private val cachedMarkdown: SparseArray<MarkdownRenderer> = MarkdownFileWidget.cachedMarkdown
+        private var width: Int = 0
+        private var height: Int = 0
+        private var bitmap: Bitmap? = null
+        private var bitmaps: MutableList<Bitmap> = listOf<Bitmap>().toMutableList()
+        protected var id: Long = 0
+
+        /**
+         * Invoked on creation.
+         */
+        override fun onCreate() {
+            Log.i(TAG, "MarkdownRemoteViewsFactory::onCreate")
+        }
+
+        /**
+         * Invoked if data set has changed.
+         */
+        override fun onDataSetChanged() {
+            Log.i(TAG, "MarkdownRemoteViewsFactory::onDataSetChanged")
+            updateContent()
+            bitmaps = getBitmaps()
+        }
+
+        /**
+         * Invoked on destruction.
+         */
+        override fun onDestroy() {
+            Log.i(TAG, "MarkdownRemoteViewsFactory::onDestroy")
+            // bitmaps.clear()
+        }
+
+        /**
+         * Returns number of items in the bitmaps list of bitmaps.
+         *
+         * @return number of items
+         */
+        override fun getCount(): Int {
+            Log.i(TAG, "MarkdownRemoteViewsFactory::getCount => ${bitmaps.size}")
+            return bitmaps.size
+        }
+
+        /**
+         * Returns a single row for a given position.
+         *
+         * @return A single view with a bitmap stripe
+         */
+        override fun getViewAt(position: Int): RemoteViews {
+            Log.v(TAG, "MarkdownRemoteViewsFactory::getViewAt[$position]")
+            val remoteView = RemoteViews(context.packageName, R.layout.widget_item)
+            if (position < bitmaps.count()) {
+                val bitmap = bitmaps[position]
+                remoteView.setImageViewBitmap(R.id.imageViewItem, bitmap)
+            }
+            remoteView.setOnClickFillInIntent(R.id.imageViewItem, prefs.getEditIntent(context, appWidgetId))
+
+            // Removed code that sets the other fields as I tried it with and without and it didn't matter. So removed for brevity
+            return remoteView
+        }
+
+        /**
+         * We support only a single type - the bitmap representing a stripe of a bigger whole.
+         */
+        override fun getViewTypeCount(): Int {
+            return 1
+        }
+
+        /**
+         * TODO: What does it mean and how is it bo be used?
+         */
+        override fun hasStableIds(): Boolean {
+            return false
+        }
+
+        /**
+         * Using a reference to the Cached Markdown, extracts the last Bitmap, immediately calculated
+         * before this invocation.
+         */
+        private fun updateContent() {
+            id++
+            val size = WidgetSizeProvider(context)
+            val (width, height) = size.getWidgetsSize(appWidgetId)
+            this.width = width
+            this.height = height
+            val md = cachedMarkdown[appWidgetId]
+            runBlocking() {
+                launch(Dispatchers.Main.immediate) {
+                    bitmap = md?.getBitmap(width, height)
                 }
-                else -> { return null }
             }
         }
 
-        val pendingIntent = PendingIntent.getActivity(context, 0, intent, pendingFlags)
-        Log.d(TAG, "Intent assembled: ${intent.resolveActivity(context.packageManager)}, data : ${intent.data}, extras: ${intent.extras} , tap: $tapBehavior")
-        return pendingIntent
+        /**
+         * Divides a larger Bitmap into a set of stripes, each 100 pixels high.
+         */
+        private fun getBitmaps() : MutableList<Bitmap> {
+            bitmap?.apply {
+                val rowHeight = 100
+                val rows = (height + rowHeight - 1) / rowHeight
+                val bitmaps: MutableList<Bitmap> = listOf<Bitmap>().toMutableList()
+                for (row in 1..rows) {
+                    val y = (row - 1) * rowHeight
+                    val availableHeight =
+                        if (rowHeight > height - y) height - y else rowHeight
+                    bitmaps.add(row - 1, extractBitmap(0, y, width, availableHeight))
+                }
+                return bitmaps
+            }
+            return listOf<Bitmap>().toMutableList()
+        }
     }
+}
+
+/**
+ * Returns the Intent to be used to request the invocation of the Markdown editor.
+ * Depends on the configured method during Widget creation.
+ * TODO: obsidian not reacting.
+ *
+ * @param appWidgetId the id of the App Widget initiating this request
+ * @return pending intent
+ */
+private fun Preferences.getEditPendingIntent(context: Context, appWidgetId: Int): PendingIntent? {
+
+    val pendingFlags = PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+    val intent = getEditIntent(context, appWidgetId)
+    return PendingIntent.getActivity(context, 0, intent, pendingFlags)
+}
+
+/**
+ * The Intent to invoke the Markdown editor.
+ */
+private fun Preferences.getEditIntent(context: Context, appWidgetId: Int): Intent? {
+
+    val uri = markdownUriOf(appWidgetId)
+    val tapBehavior = this[appWidgetId, PREF_BEHAVIOUR, TAP_BEHAVIOUR_DEFAULT_APP]
+
+    val flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+
+    val intent = Intent(Intent.ACTION_EDIT).apply {
+        this.flags = flags
+        putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId)
+
+        when (tapBehavior) {
+            TAP_BEHAVIOUR_DEFAULT_APP -> setDataAndType(uri.normalizeScheme(), "text/plain")
+            TAP_BEHAVIOUR_OBSIDIAN -> data = uri.toObsidian(context)
+            TAP_BEHAVIOUR_ITSELF -> {
+                setComponent(ComponentName(context.packageName, MainActivity::class.qualifiedName!!))
+                setDataAndType(uri.normalizeScheme(), "text/plain")
+                // data = Uri.parse(toUri(Intent.URI_INTENT_SCHEME))
+            }
+            else -> { return null }
+        }
+    }
+
+    Log.d(TAG, "Intent assembled: ${intent.resolveActivity(context.packageManager)}, data : ${intent.data}, extras: ${intent.extras}, tap: $tapBehavior")
+    return intent
 }
 
 /**
@@ -296,3 +484,34 @@ fun getUpdatePendingIntent(context: Context, appWidgetId: Int): PendingIntent {
     Log.d(TAG, "Intent assembled: ${intentUpdate.resolveActivity(context.packageManager)}, data : ${intentUpdate.data}, extras: ${intentUpdate.extras}")
     return pendingUpdate
 }
+
+/* TEST CODE WITH LIST VIEW
+
+views.apply {
+    val rowHeight = 100
+    val builder = RemoteViews.RemoteCollectionItems.Builder()
+    val rows = (bitmap.height + rowHeight - 1) / rowHeight
+    for (row in 1..rows) {
+        val y = (row - 1) * rowHeight
+        val availableHeight = if (rowHeight > bitmap.height - y) bitmap.height - y else rowHeight
+        val singleRow = RemoteViews(context.packageName, R.layout.widget_item)
+        singleRow.setImageViewBitmap(R.id.imageViewItem, bitmap.extractBitmap(0, y, width, availableHeight))
+        builder.addItem(row.toLong(), singleRow)
+
+        singleRow.setOnClickPendingIntent(
+            R.id.imageViewItem,
+            getIntent(context, appWidgetId)
+        )
+        appWidgetManager.updateAppWidget(appWidgetId, singleRow)
+    }
+    builder
+        .setViewTypeCount(1)
+        //.setHasStableIds(true)
+    val itemCollection = builder.build()
+    setRemoteAdapter(R.id.renderImg, itemCollection)
+}
+
+appWidgetManager.updateAppWidget(appWidgetId, views)
+
+ TEST END
+ */

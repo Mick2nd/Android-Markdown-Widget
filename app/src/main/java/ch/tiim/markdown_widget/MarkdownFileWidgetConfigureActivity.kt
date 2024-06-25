@@ -29,7 +29,7 @@ private const val TAG = "MarkdownFileWidgetConfigureActivity"
  * TODO: Log messages related to BAL HARDENING
  */
 @AndroidEntryPoint
-class MarkdownFileWidgetConfigureActivity @Inject constructor() : AppCompatActivity() {
+class MarkdownFileWidgetConfigureActivity : AppCompatActivity() {
 
     @Inject lateinit var prefs: Preferences
 
