@@ -41,9 +41,23 @@
         android:src="@android:drawable/ic_popup_sync"
         android:translationZ="2dp" />
 
-    <ImageView
+    <TextView
+        android:id="@+id/emptyView"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:id="@+id/emptyView" />
+        android:layout_toStartOf="@id/refreshImageButton"
+        android:text="@string/no_content"
+        android:visibility="invisible" />
+
+    <ImageView
+        android:id="@+id/imageViewItem2"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="#FFEB3B"
+        android:clickable="true"
+        android:contentDescription="@string/stripe_of_larger_bitmap"
+        android:focusable="true"
+        app:srcCompat="@drawable/ic_launcher_foreground"
+        android:visibility="invisible" />
 
 </RelativeLayout>

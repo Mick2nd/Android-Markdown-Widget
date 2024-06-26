@@ -20,4 +20,6 @@
     <string name="stores_the_changes">Stores the changes and updates the widget</string>
     <string name="editor_area">Editor area</string>
     <string name="widget_content">The content of the widget</string>
+    <string name="no_content">No Content &#8230;</string>
+    <string name="stripe_of_larger_bitmap">This is a stripe of a larger Bitmap</string>
 </resources>

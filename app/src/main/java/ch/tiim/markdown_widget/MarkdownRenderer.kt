@@ -163,12 +163,12 @@ class MarkdownRenderer @Inject constructor(
 
                 override fun onPageFinished(view: WebView?, url: String?) {
                     super.onPageFinished(view, url)
+                    if (it.progress < 100) {                                                        // secures from being called twice
+                        return
+                    }
 
                     val duration = System.currentTimeMillis() - time
-                    Log.d(TAG, "Duration of Web Site display: ${duration}ms")
-                    it.evaluateJavascript("document.body.scrollHeight") {
-                        Log.i(TAG,"ScrollHeight is: ${it.toInt()} / ${webView!!.contentHeight}")
-                    }
+                    Log.d(TAG, "Duration of Web Site display: ${duration}ms : ${it.progress}")
                     ready = true
                     onReady()
                 }
@@ -212,16 +212,12 @@ class MarkdownRenderer @Inject constructor(
     private fun WebView.drawBitmap(width: Int, height: Int) : Bitmap {
         val time = System.currentTimeMillis()
         val referenceHeight = (contentHeight.toFloat() * Resources.getSystem().displayMetrics.density).toInt()
-        val heightLimit = 14_385_000 / 4 / width
+        val heightLimit = 5000                                                                      // TODO: CREATES ARTEFACTS! => 14_385_000 / 4 / width
         val targetHeight = minOf(referenceHeight + 200, heightLimit)
 
-        var bitmap = Bitmap.createBitmap(width, targetHeight, Bitmap.Config.ARGB_8888)
+        val bitmap = Bitmap.createBitmap(width, targetHeight, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bitmap)
         draw(canvas)
-
-        val lastPixel = bitmap[bitmap.width - 1, bitmap.height - 1]
-        val (x, y) = bitmap.indexOf { pixel -> pixel != lastPixel }
-        bitmap = bitmap.extractBitmap(0, 0, width, maxOf(y + 20, height))
 
         val duration = System.currentTimeMillis() - time
         Log.i(TAG, "${bitmap.toStringAlt()}, execution in ${duration}ms")

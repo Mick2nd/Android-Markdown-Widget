@@ -16,6 +16,7 @@ import android.widget.RemoteViews
 import android.widget.RemoteViewsService
 import android.widget.Toast
 import androidx.annotation.RequiresApi
+import androidx.core.graphics.get
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -23,6 +24,9 @@ import kotlinx.coroutines.runBlocking
 import javax.inject.Inject
 
 private const val TAG = "MarkdownFileWidget"
+private const val STRIPE_HEIGHT = 100
+private const val WIDGET_PADDING = 20
+private const val WIDGET_HEIGHT = "widget_height"
 
 /**
  * Implementation of App Widget functionality.
@@ -149,6 +153,7 @@ class MarkdownFileWidget : AppWidgetProvider() {
         appWidgetId: Int
     ) {
         registerPendingIntents(context, appWidgetManager, appWidgetId)
+        cachedMarkdown.delete(appWidgetId)                                                          // force update
         loadRenderer(context, appWidgetId) {
             loadRendererCb(context, appWidgetId)
             Log.d(TAG, "Update after Update Request")
@@ -213,7 +218,9 @@ class MarkdownFileWidget : AppWidgetProvider() {
         val size = WidgetSizeProvider(context)
         val (width, height) = size.getWidgetsSize(appWidgetId)
         val bitmap = md.getBitmap(width, height)
-        registerRemoteAdapter(context, appWidgetId, bitmap)
+        val bitmapMeta = bitmap.toBundleMeta()
+        bitmapMeta.putInt(WIDGET_HEIGHT, height)
+        registerRemoteAdapter(context, appWidgetId, bitmapMeta)
     }
 
     /**
@@ -235,13 +242,13 @@ class MarkdownFileWidget : AppWidgetProvider() {
     /**
      * Registers the Remote Adapter, responsible for display of ListView contents.
      *
-     * @param bitmap the [Bitmap], representing the rendered markdown, to be displayed.
+     * @param bitmapMeta the [Bundle], representing the rendered markdown, to be displayed.
      */
-    private fun registerRemoteAdapter(context: Context, appWidgetId: Int, bitmap: Bitmap) {
+    private fun registerRemoteAdapter(context: Context, appWidgetId: Int, bitmapMeta: Bundle) {
         val appWidgetManager = AppWidgetManager.getInstance(context)
         val intent = Intent(context, MarkdownWidgetService::class.java).apply {
             putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId)
-            putExtras(bitmap.toBundleMeta())
+            putExtras(bitmapMeta)
             data = Uri.parse(toUri(Intent.URI_INTENT_SCHEME))
         }
 
@@ -257,6 +264,15 @@ class MarkdownFileWidget : AppWidgetProvider() {
 
         // Instruct the widget manager to update the widget
         appWidgetManager.updateAppWidget(appWidgetId, remoteViews)
+    }
+
+    /**
+     * Returns an Array of living appWidgetIds of this widget.
+     */
+    private fun getAppWidgetIds(context: Context) : IntArray {
+        val appWidgetManager = AppWidgetManager.getInstance(context)
+        val componentName = ComponentName(context, MarkdownFileWidget::class.java)
+        return appWidgetManager.getAppWidgetIds(componentName)
     }
 }
 
@@ -296,7 +312,7 @@ class MarkdownWidgetService : RemoteViewsService() {
          */
         @RequiresApi(Build.VERSION_CODES.S)
         override fun getItemId(position: Int): Long {
-            Log.i(TAG, "MarkdownRemoteViewsFactory::getItemId")
+            Log.v(TAG, "MarkdownRemoteViewsFactory::getItemId")
             return id * 10 + position // (getViewAt(position).viewId).toLong()
         }
     }
@@ -310,7 +326,6 @@ class MarkdownWidgetService : RemoteViewsService() {
         private var width: Int = 0
         private var height: Int = 0
         private var bitmap: Bitmap? = null
-        private var bitmaps: MutableList<Bitmap> = listOf<Bitmap>().toMutableList()
         protected var id: Long = 0
 
         /**
@@ -318,15 +333,14 @@ class MarkdownWidgetService : RemoteViewsService() {
          */
         override fun onCreate() {
             Log.i(TAG, "MarkdownRemoteViewsFactory::onCreate")
+            updateContent()
         }
 
         /**
-         * Invoked if data set has changed.
+         * Invoked if data set has changed. IF THIS IS TO BE USED: does not run in main thread.
          */
         override fun onDataSetChanged() {
             Log.i(TAG, "MarkdownRemoteViewsFactory::onDataSetChanged")
-            updateContent()
-            bitmaps = getBitmaps()
         }
 
         /**
@@ -343,8 +357,18 @@ class MarkdownWidgetService : RemoteViewsService() {
          * @return number of items
          */
         override fun getCount(): Int {
-            Log.i(TAG, "MarkdownRemoteViewsFactory::getCount => ${bitmaps.size}")
-            return bitmaps.size
+
+            val factory = this
+            var count = 0
+            bitmap?.apply {
+                val lastPixel = this[width - 1, height - 1]
+                val (x, y) = indexOf { pixel -> pixel != lastPixel }
+                val targetHeight = maxOf(y + WIDGET_PADDING, factory.height)
+                count = (targetHeight + STRIPE_HEIGHT - 1) / STRIPE_HEIGHT
+            }
+
+            Log.i(TAG, "MarkdownRemoteViewsFactory::getCount => ${count}")
+            return count
         }
 
         /**
@@ -355,8 +379,8 @@ class MarkdownWidgetService : RemoteViewsService() {
         override fun getViewAt(position: Int): RemoteViews {
             Log.v(TAG, "MarkdownRemoteViewsFactory::getViewAt[$position]")
             val remoteView = RemoteViews(context.packageName, R.layout.widget_item)
-            if (position < bitmaps.count()) {
-                val bitmap = bitmaps[position]
+            this.bitmap?.apply {
+                val bitmap = extractBitmap(0, position * STRIPE_HEIGHT, width, STRIPE_HEIGHT)
                 remoteView.setImageViewBitmap(R.id.imageViewItem, bitmap)
             }
             remoteView.setOnClickFillInIntent(R.id.imageViewItem, prefs.getEditIntent(context, appWidgetId))
@@ -390,11 +414,7 @@ class MarkdownWidgetService : RemoteViewsService() {
             this.width = width
             this.height = height
             val md = cachedMarkdown[appWidgetId]
-            runBlocking() {
-                launch(Dispatchers.Main.immediate) {
-                    bitmap = md?.getBitmap(width, height)
-                }
-            }
+            bitmap = md?.getBitmap(width, height)
         }
 
         /**
@@ -402,7 +422,7 @@ class MarkdownWidgetService : RemoteViewsService() {
          */
         private fun getBitmaps() : MutableList<Bitmap> {
             bitmap?.apply {
-                val rowHeight = 100
+                val rowHeight = STRIPE_HEIGHT
                 val rows = (height + rowHeight - 1) / rowHeight
                 val bitmaps: MutableList<Bitmap> = listOf<Bitmap>().toMutableList()
                 for (row in 1..rows) {

@@ -10,6 +10,10 @@
         android:id="@+id/imageViewItem"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:backgroundTint="#E91E63"
-        android:clickable="true" />
+        android:background="#FFEB3B"
+        android:clickable="true"
+        android:contentDescription="@string/stripe_of_larger_bitmap"
+        android:focusable="true"
+        app:srcCompat="@drawable/ic_launcher_foreground" />
+
 </FrameLayout>

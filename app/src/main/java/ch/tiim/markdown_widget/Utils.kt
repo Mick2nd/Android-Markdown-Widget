@@ -163,15 +163,15 @@ fun Bitmap.indexOf(predicate: (Int) -> Boolean) : Pair<Int, Int> {
     val noPixels = width * (height - heightOffset)
     val pixels = IntArray(noPixels)
     getPixels(pixels,0, width,0, heightOffset, width, height - heightOffset)
-    val lastPixel = pixels[noPixels - 1]
-    val pos = pixels.indexOfLast { px -> px != lastPixel }
+    val pos = pixels.indexOfLast { px -> predicate(px) }
     if (pos >= 0) {
         val y = pos / width + heightOffset
         val x = pos % width
         return x to y
     }
 
-    throw IllegalStateException("Bitmap empty")
+    return width - 1 to height - 1
+    // throw IllegalStateException("Bitmap empty")
 }
 
 /**
@@ -190,6 +190,23 @@ fun Bitmap.extractBitmap(x: Int, y: Int, width: Int, height: Int): Bitmap {
     val pixels = IntArray(wl * hl)
     getPixels(pixels, 0, wl, xl, yl, wl, hl)
     newBitmap.setPixels(pixels, 0, wl, 0, 0, wl, hl)
+    return newBitmap
+}
+
+/**
+ * Fills a Bitmap to a given height and returns it.
+ */
+fun Bitmap.fillTo(height: Int) : Bitmap {
+    if (height <= this.height) {
+        return this
+    }
+    val newBitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+    val pixels = IntArray(width * height)
+    val pixel = getPixel(width - 1, this.height - 1)
+    pixels.fill(pixel)
+    getPixels(pixels,0, width, 0, 0, width, this.height)
+    newBitmap.setPixels(pixels, 0, width, 0, 0, width, height)
+
     return newBitmap
 }
 
