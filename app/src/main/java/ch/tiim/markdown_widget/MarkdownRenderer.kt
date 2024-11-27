@@ -7,14 +7,11 @@ import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
 import android.os.Build
-import android.os.Handler
-import android.os.Looper
 import android.util.Log
 import android.webkit.JavascriptInterface
 import android.webkit.WebSettings.LOAD_NO_CACHE
 import android.webkit.WebView
 import android.webkit.WebView.RENDERER_PRIORITY_BOUND
-import androidx.core.graphics.get
 import androidx.webkit.WebViewAssetLoader
 import androidx.webkit.WebViewAssetLoader.AssetsPathHandler
 import androidx.webkit.WebViewAssetLoader.InternalStoragePathHandler
@@ -74,6 +71,7 @@ class MarkdownRenderer @Inject constructor(
         if (!isReady()) {
             return
         }
+        changeObserver.updateState(widthRatio = widthRatio)
         this.widthRatio = widthRatio
         this.onReady = onReady
         ready = false
@@ -88,6 +86,11 @@ class MarkdownRenderer @Inject constructor(
      * Queries the [Bitmap] of the rendered markdown.
      */
     fun getBitmap(width: Int, height: Int): Bitmap {
+        if (bitmap != null) {
+            Log.d(TAG, "getBitmap with existing Bitmap: ${bitmap!!.toStringAlt()}")
+            return bitmap!!
+        }
+
         if (!isReady()) {
             Log.e(TAG, "WebView is not ready yet!")
             return createDummy(width, height)
@@ -98,6 +101,14 @@ class MarkdownRenderer @Inject constructor(
         }
         return bitmap!!                 //.extractBitmap(0, 0, width, height)
     }
+
+    /**
+     * In case of true we only have to update the height of the widget. Invoke this always before
+     * [getBitmap].
+     */
+    val isBitmapReady : Boolean
+        get() = bitmap != null
+
 
     /**
      * Checks for markdown change.
@@ -115,7 +126,7 @@ class MarkdownRenderer @Inject constructor(
      * @param widthRatio a new ratio for widget width
      * @return flag indicating whether an update is required
      */
-    fun needsUpdate(widthRatio: Float) : Boolean {
+    fun needsRefresh(widthRatio: Float) : Boolean {
         return changeObserver.needsRefresh(widthRatio)
     }
 
@@ -212,7 +223,7 @@ class MarkdownRenderer @Inject constructor(
     private fun WebView.drawBitmap(width: Int, height: Int) : Bitmap {
         val time = System.currentTimeMillis()
         val referenceHeight = (contentHeight.toFloat() * Resources.getSystem().displayMetrics.density).toInt()
-        val heightLimit = 5000                                                                      // TODO: CREATES ARTEFACTS! => 14_385_000 / 4 / width
+        val heightLimit = 10000                                                                     // TODO: CREATES ARTEFACTS! => 14_385_000 / 4 / width
         val targetHeight = minOf(referenceHeight + 200, heightLimit)
 
         val bitmap = Bitmap.createBitmap(width, targetHeight, Bitmap.Config.ARGB_8888)

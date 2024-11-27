@@ -69,6 +69,8 @@ class ConfigureFragment : Fragment() {
             try {
                 contentCache.refresh()
                 Log.d(TAG, "Widgets to be refreshed: ${prefs.widgetIds()}")
+                val livingAppWidgetIds = getAppWidgetIds(requireContext())
+                prefs.clean(livingAppWidgetIds)
                 for (appWidgetId in prefs.widgetIds()) {
                     getUpdatePendingIntent(view.context, appWidgetId).send()
                 }
@@ -107,6 +109,7 @@ class ConfigureFragment : Fragment() {
         prefs[SCREEN_WIDTH] = width.toString()                                                      // and all widgets
         prefs[SCREEN_HEIGHT] = height.toString()
 
+        Log.d(TAG, "Detected App Widget Ids: ${getAppWidgetIds(requireContext()).toList()}")
         displayOnDebug()
     }
 

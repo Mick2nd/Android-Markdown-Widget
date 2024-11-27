@@ -18,15 +18,13 @@ import android.widget.Toast
 import androidx.annotation.RequiresApi
 import androidx.core.graphics.get
 import dagger.hilt.android.AndroidEntryPoint
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
 import javax.inject.Inject
 
 private const val TAG = "MarkdownFileWidget"
 private const val STRIPE_HEIGHT = 100
 private const val WIDGET_PADDING = 20
 private const val WIDGET_HEIGHT = "widget_height"
+private const val WIDGET_HEIGHT_UPDATE = "widget_height_update"
 
 /**
  * Implementation of App Widget functionality.
@@ -193,7 +191,7 @@ class MarkdownFileWidget : AppWidgetProvider() {
             md = MarkdownRenderer(context, s, widthRatio, cb)
             cachedMarkdown.put(appWidgetId, md)
             Log.d(TAG, "Renderer created: $md for $fileUri")
-        } else if (md.needsUpdate(widthRatio)) {
+        } else if (md.needsRefresh(widthRatio)) {
             md.refresh(widthRatio, cb)
             Log.d(TAG, "Renderer refreshed $md for $fileUri")
         } else {
@@ -217,9 +215,11 @@ class MarkdownFileWidget : AppWidgetProvider() {
 
         val size = WidgetSizeProvider(context)
         val (width, height) = size.getWidgetsSize(appWidgetId)
+        val isHeightUpdate = md.isBitmapReady
         val bitmap = md.getBitmap(width, height)
         val bitmapMeta = bitmap.toBundleMeta()
         bitmapMeta.putInt(WIDGET_HEIGHT, height)
+        bitmapMeta.putBoolean(WIDGET_HEIGHT_UPDATE, isHeightUpdate)
         registerRemoteAdapter(context, appWidgetId, bitmapMeta)
     }
 
@@ -251,6 +251,7 @@ class MarkdownFileWidget : AppWidgetProvider() {
             putExtras(bitmapMeta)
             data = Uri.parse(toUri(Intent.URI_INTENT_SCHEME))
         }
+        val isHeightUpdate = bitmapMeta.getBoolean(WIDGET_HEIGHT_UPDATE)
 
         val remoteViews = RemoteViews(context.packageName, R.layout.markdown_file_widget).apply {
             setRemoteAdapter(R.id.renderImg, intent)
@@ -263,16 +264,13 @@ class MarkdownFileWidget : AppWidgetProvider() {
         }
 
         // Instruct the widget manager to update the widget
-        appWidgetManager.updateAppWidget(appWidgetId, remoteViews)
-    }
-
-    /**
-     * Returns an Array of living appWidgetIds of this widget.
-     */
-    private fun getAppWidgetIds(context: Context) : IntArray {
-        val appWidgetManager = AppWidgetManager.getInstance(context)
-        val componentName = ComponentName(context, MarkdownFileWidget::class.java)
-        return appWidgetManager.getAppWidgetIds(componentName)
+        if (!isHeightUpdate) {
+            appWidgetManager.updateAppWidget(appWidgetId, remoteViews)
+        } else {
+            appWidgetManager.updateAppWidget(appWidgetId, remoteViews)
+            // Intended pure height update not working
+            // appWidgetManager.notifyAppWidgetViewDataChanged(appWidgetId, R.id.renderImg)
+        }
     }
 }
 
@@ -313,7 +311,7 @@ class MarkdownWidgetService : RemoteViewsService() {
         @RequiresApi(Build.VERSION_CODES.S)
         override fun getItemId(position: Int): Long {
             Log.v(TAG, "MarkdownRemoteViewsFactory::getItemId")
-            return id * 10 + position // (getViewAt(position).viewId).toLong()
+            return position.toLong() + 1 // (getViewAt(position).viewId).toLong()
         }
     }
 
@@ -322,7 +320,8 @@ class MarkdownWidgetService : RemoteViewsService() {
      */
     internal abstract inner class MarkdownRemoteViewsFactoryBase(private val context: Context, private val appWidgetId: Int
     ) : RemoteViewsFactory {
-        private val cachedMarkdown: SparseArray<MarkdownRenderer> = MarkdownFileWidget.cachedMarkdown
+        private val cachedMarkdown: SparseArray<MarkdownRenderer>
+            get() = MarkdownFileWidget.cachedMarkdown
         private var width: Int = 0
         private var height: Int = 0
         private var bitmap: Bitmap? = null
@@ -341,6 +340,7 @@ class MarkdownWidgetService : RemoteViewsService() {
          */
         override fun onDataSetChanged() {
             Log.i(TAG, "MarkdownRemoteViewsFactory::onDataSetChanged")
+            // updateContent()
         }
 
         /**
@@ -407,33 +407,20 @@ class MarkdownWidgetService : RemoteViewsService() {
          * Using a reference to the Cached Markdown, extracts the last Bitmap, immediately calculated
          * before this invocation.
          */
-        private fun updateContent() {
+        private fun updateContent(heightOnly: Boolean = false) {
             id++
             val size = WidgetSizeProvider(context)
             val (width, height) = size.getWidgetsSize(appWidgetId)
             this.width = width
             this.height = height
-            val md = cachedMarkdown[appWidgetId]
-            bitmap = md?.getBitmap(width, height)
-        }
+            if (!heightOnly) {
+                val md = cachedMarkdown[appWidgetId]
+                bitmap = md?.getBitmap(width, height)
 
-        /**
-         * Divides a larger Bitmap into a set of stripes, each 100 pixels high.
-         */
-        private fun getBitmaps() : MutableList<Bitmap> {
-            bitmap?.apply {
-                val rowHeight = STRIPE_HEIGHT
-                val rows = (height + rowHeight - 1) / rowHeight
-                val bitmaps: MutableList<Bitmap> = listOf<Bitmap>().toMutableList()
-                for (row in 1..rows) {
-                    val y = (row - 1) * rowHeight
-                    val availableHeight =
-                        if (rowHeight > height - y) height - y else rowHeight
-                    bitmaps.add(row - 1, extractBitmap(0, y, width, availableHeight))
-                }
-                return bitmaps
+                if (md == null) {
+                    getUpdatePendingIntent(context, appWidgetId).send()                             // request an update, this can happen after new installation
+                }                                                                                   // or restart
             }
-            return listOf<Bitmap>().toMutableList()
         }
     }
 }
@@ -503,6 +490,24 @@ fun getUpdatePendingIntent(context: Context, appWidgetId: Int): PendingIntent {
     )
     Log.d(TAG, "Intent assembled: ${intentUpdate.resolveActivity(context.packageManager)}, data : ${intentUpdate.data}, extras: ${intentUpdate.extras}")
     return pendingUpdate
+}
+
+/**
+ * Returns an Array of living appWidgetIds of this widget.
+ */
+fun getAppWidgetIds(context: Context) : IntArray {
+    val appWidgetManager = AppWidgetManager.getInstance(context)
+    val componentName = ComponentName(context, MarkdownFileWidget::class.java)
+    return appWidgetManager.getAppWidgetIds(componentName)
+}
+
+/**
+ * Sends update requests for all App Widgets.
+ */
+fun updateAllAppWidgets(context: Context) {
+    for (appWidgetId in getAppWidgetIds(context)) {
+        getUpdatePendingIntent(context, appWidgetId).send()
+    }
 }
 
 /* TEST CODE WITH LIST VIEW

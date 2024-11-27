@@ -4,7 +4,6 @@ import android.content.Context
 import android.net.Uri
 import android.util.Log
 import javax.inject.Inject
-import javax.inject.Singleton
 
 private const val TAG = "ChangeObserver"
 
@@ -34,21 +33,18 @@ class ChangeObserver @Inject constructor (private val context: Context, private 
     /**
      * Checks if markdown has changed.
      */
-    fun needsMarkdownUpdate(markdown: String) : Boolean {
-        val result = markdown != this.markdown
-        this.markdown = markdown
-        updateState()
-        return result
+    fun needsMarkdownUpdate(markdown: String): Boolean {
+        return markdown != this.markdown
     }
 
     /**
      * Checks if render settings have changed.
      */
-    fun needsRefresh(widthRatio: Float) : Boolean {
-        val result = prefs.useUserStyle != useUserStyle || prefs.zoom != zoom || widthRatio != this.widthRatio || load() != userStyle
-        this.widthRatio = widthRatio
-        updateState()
-        return result
+    fun needsRefresh(widthRatio: Float): Boolean {
+        return prefs.useUserStyle != useUserStyle ||
+               prefs.zoom != zoom ||
+               widthRatio != this.widthRatio ||
+               useUserStyle && load() != userStyle
     }
 
     /**

@@ -56,6 +56,17 @@ open class Preferences(@ApplicationContext private val context: Context) {
     }
 
     /**
+     * Cleans the Preferences from unused AppWidgetIds.
+     */
+    fun clean(except: IntArray) {
+        for (appWidgetId in widgetIds()) {                                                          // widget ids derived from Shared Preferences
+            if (appWidgetId !in except) {
+                delete(appWidgetId)
+            }
+        }
+    }
+
+    /**
      * Read "Global" preference.
      *
      * @param prefName the global preference name

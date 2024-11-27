@@ -54,6 +54,9 @@ class MainActivity : AppCompatActivity(), ChangeSignal {
                 appWidgetId = intent.getIntExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, 0)
                 uri = intent.data
                 start = 2
+            } else {
+                Log.d(TAG, "Started MainActivity with action ${intent.action}")
+                updateAllAppWidgets(applicationContext)
             }
         }
 
